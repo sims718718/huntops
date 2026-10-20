@@ -1,0 +1,24 @@
+<div id="results" aria-live="polite">{% if filter_error %}<p role="alert">{{ filter_error }}</p>{% endif %}<p class="muted">{{ paginator.count }} results</p><div class="panel flush">
+  <table>
+    <tr><th>ID</th><th>Task</th><th>Source</th><th>Techniques</th><th>Tool</th><th>Used by</th></tr>
+    {% for entry in object_list %}
+    <tr>
+      <td><a class="mono" href="{{ entry.get_absolute_url }}">{{ entry.library_id }}</a></td>
+      <td>{{ entry.title }}</td>
+      <td><span class="chip {% if entry.provenance == 'curated' %}detection{% elif entry.provenance == 'sigma' %}{% else %}go{% endif %}">{{ entry.get_provenance_display }}</span></td>
+      <td>{% for t in entry.techniques.all %}<a class="chip id" href="{{ t.get_absolute_url }}">{{ t.attack_id }}</a> {% empty %}<span class="muted">None</span>{% endfor %}</td>
+      <td>{{ entry.hunting_tool|default:"—" }}</td>
+      <td class="num">{{ entry.instance_count }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6">
+      <div class="empty">
+        <p>The library is empty. Seed the reference examples, or save any task you have written into it.</p>
+        <code>manage.py seed_library</code>
+      </div>
+    </td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% include 'hunts/partials/_pager.html' %}</div>

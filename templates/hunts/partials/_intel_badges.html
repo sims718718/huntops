@@ -1,0 +1,2 @@
+{% if report.tlp %}<span class="chip tlp {{ report.tlp }}">{{ report.get_tlp_display }}</span>{% endif %}
+{% if report.gate_status %}<span class="chip {{ report.gate_status }}">{{ report.get_gate_status_display }}</span>{% else %}<span class="chip">Gate not assessed</span>{% endif %}

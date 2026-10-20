@@ -1,0 +1,652 @@
+/* HuntOps console.
+ *
+ * One rule governs this system: every saturated colour is a state. The app already
+ * assigns meaning to colour four times over - coverage status, feasibility rating,
+ * task result, outcome type - so decorative colour would compete with the colour that
+ * carries information. Chrome is achromatic; one steel blue marks what is interactive.
+ */
+
+@font-face {
+  font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("../vendor/plex/IBMPlexSans-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("../vendor/plex/IBMPlexSans-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("../vendor/plex/IBMPlexSans-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("../vendor/plex/IBMPlexMono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("../vendor/plex/IBMPlexMono-500.woff2") format("woff2");
+}
+
+:root {
+  --font: "IBM Plex Sans", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+
+  --t-xs: 0.8rem;
+  --t-sm: 0.867rem;
+  --t-md: 1rem;
+  --t-lg: 1.2rem;
+  --t-xl: 1.6rem;
+
+  --gap: 1rem;
+  --rail: 13.5rem;
+
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --panel-2: #fafbfc;
+  --rule: #dce0e6;
+  --rule-strong: #c3c9d2;
+  --ink: #1c2530;
+  --ink-2: #5c6773;
+  --ink-3: #8a94a2;
+  --accent: #2c5f8e;
+  --accent-ink: #ffffff;
+  --accent-soft: #e8f0f8;
+
+  --neutral-bg: #e9ecf0; --neutral-fg: #56616e;
+  --go-bg: #dceee0;      --go-fg: #24603a;
+  --warn-bg: #faecd2;    --warn-fg: #7a5313;
+  --info-bg: #dce9f7;    --info-fg: #1f4e7a;
+  --stop-bg: #f8dede;    --stop-fg: #8a2b2b;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f141a;
+  --panel: #161c24;
+  --panel-2: #1b2230;
+  --rule: #262e3a;
+  --rule-strong: #3a4553;
+  --ink: #dde3ea;
+  --ink-2: #97a2b0;
+  --ink-3: #6b7684;
+  --accent: #74a9dc;
+  --accent-ink: #0f141a;
+  --accent-soft: #17293c;
+
+  --neutral-bg: #232b36; --neutral-fg: #9aa5b3;
+  --go-bg: #16301f;      --go-fg: #82cb9b;
+  --warn-bg: #34280f;    --warn-fg: #e0b05e;
+  --info-bg: #14283c;    --info-fg: #82b4e2;
+  --stop-bg: #351a1c;    --stop-fg: #e28e8e;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 15px; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: var(--t-md);
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Counts and IDs sit in columns; lining figures keep those columns straight. */
+table, .num { font-variant-numeric: tabular-nums; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------- shell */
+
+.shell { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); min-height: 100vh; }
+
+.sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--rule);
+  padding: 1.1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.brand {
+  font-weight: 600;
+  font-size: var(--t-md);
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  padding: 0 0.5rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+.brand b { font-weight: 600; }
+.brand span { color: var(--ink-3); font-size: var(--t-xs); font-family: var(--mono); }
+
+.nav { display: flex; flex-direction: column; gap: 1px; }
+.nav a {
+  color: var(--ink-2);
+  padding: 0.36rem 0.5rem;
+  border-radius: 3px;
+  border-left: 2px solid transparent;
+  font-size: var(--t-sm);
+}
+.nav a:hover { background: var(--panel-2); color: var(--ink); text-decoration: none; }
+.nav a[aria-current="page"] {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0.5rem; font-size: var(--t-xs); }
+.sidebar-foot .who { color: var(--ink-3); padding: 0 0.5rem; }
+
+.main { padding: 1.4rem 1.75rem 4rem; max-width: 76rem; }
+/* The matrix is the one screen worth the whole monitor; prose stays capped elsewhere. */
+.main.wide { max-width: none; }
+
+/* ---------------------------------------------------------------- headings */
+
+.page-head { margin-bottom: 1.1rem; }
+.page-head h1 {
+  font-size: var(--t-xl);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  margin: 0 0 0.15rem;
+  line-height: 1.2;
+}
+.page-head .sub { color: var(--ink-2); font-size: var(--t-sm); }
+.page-head .id { font-family: var(--mono); font-weight: 500; color: var(--ink-2); }
+
+.crumbs { font-size: var(--t-xs); color: var(--ink-3); margin-bottom: 0.5rem; }
+.crumbs a { color: var(--ink-2); }
+.crumbs i { font-style: normal; padding: 0 0.4rem; color: var(--rule-strong); }
+
+h2 {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-2);
+  margin: 1.8rem 0 0.55rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--rule);
+}
+h3 { font-size: var(--t-md); font-weight: 600; margin: 1.1rem 0 0.4rem; }
+
+.muted { color: var(--ink-3); }
+.mono { font-family: var(--mono); }
+
+/* ---------------------------------------------------------------- panels */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.7rem;
+}
+.panel.flush { padding: 0; overflow: hidden; }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) 19rem; gap: 1.6rem; align-items: start; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: 1.6rem; }
+.rail { position: sticky; top: 1.4rem; display: flex; flex-direction: column; gap: 0.7rem; }
+
+/* ---------------------------------------------------------------- state */
+
+.chip {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border-radius: 9px;
+  font-size: var(--t-xs);
+  font-weight: 500;
+  background: var(--neutral-bg);
+  color: var(--neutral-fg);
+  white-space: nowrap;
+}
+.chip.go, .chip.clean, .chip.executed, .chip.true_positive { background: var(--go-bg); color: var(--go-fg); }
+.chip.conditional, .chip.gap, .chip.in_progress { background: var(--warn-bg); color: var(--warn-fg); }
+.chip.detection, .chip.analytics_detection { background: var(--info-bg); color: var(--info-fg); }
+.chip.no_go, .chip.security_incident, .chip.blocked { background: var(--stop-bg); color: var(--stop-fg); }
+.chip.id { font-family: var(--mono); border-radius: 3px; }
+.chip.removable { display: inline-flex; align-items: center; gap: 0.3rem; }
+.chip.removable button {
+  border: 0; background: none; padding: 0; margin: 0; font: inherit; line-height: 1;
+  color: inherit; cursor: pointer;
+}
+
+.technique-picker-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.35rem; }
+.technique-picker-wrap { position: relative; }
+.technique-picker-matches {
+  position: absolute; z-index: 5; top: 100%; left: 0; right: 0;
+  max-height: 14rem; overflow-y: auto; margin-top: 0.2rem;
+  background: var(--panel); border: 1px solid var(--rule-strong); border-radius: 3px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+.technique-picker-matches button {
+  display: block; width: 100%; text-align: left; border: 0; background: none;
+  padding: 0.3rem 0.5rem; font: inherit; font-size: var(--t-sm); color: var(--ink); cursor: pointer;
+}
+.technique-picker-matches button:hover, .technique-picker-matches button:focus {
+  background: var(--panel-2);
+}
+
+/* The stripe is the structural device: state is readable before any text is. */
+.striped { border-left: 3px solid var(--rule-strong); }
+.striped.go, .striped.clean { border-left-color: var(--go-fg); }
+.striped.conditional, .striped.gap { border-left-color: var(--warn-fg); }
+.striped.detection { border-left-color: var(--info-fg); }
+.striped.no_go, .striped.blocked { border-left-color: var(--stop-fg); }
+
+/* ---------------------------------------------------------------- chip lists */
+
+/* Techniques and Sigma rules are set membership, not prose. What an analyst asks of
+ * these sections is "which ones", so a wrapped row answers in one glance what a stacked
+ * list answered in four scrolls. Metadata is not dropped - it moves behind "Show
+ * details", because attribution has to stay reachable without a hover. */
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0 0 0.5rem; }
+.chips:last-child { margin-bottom: 0; }
+
+/* Scoped to .chips so the chips already sitting in tables and rails keep inline-block
+ * and their baseline alignment. */
+.chips .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 24rem;
+  padding: 0.12rem 0.5rem;
+  border: 0;
+  font: inherit;
+  font-size: var(--t-xs);
+  font-weight: 500;
+  cursor: default;
+}
+.chips .chip .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Link chips keep the accent so they still read as links; a coloured variant
+ * (a deprecated technique, or a Sigma rule's catalog status) has to take the
+ * state colour or it fails contrast. */
+a.chip:hover { text-decoration: underline; }
+a.chip.no_go, a.chip.stable, a.chip.test, a.chip.experimental, a.chip.deprecated, a.chip.unsupported { color: inherit; }
+
+/* A <form> cannot live inside a <span>, so an actionable chip is the form. */
+form.chip { margin: 0; }
+.chips .chip button.x {
+  all: unset;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.55;
+  line-height: 1;
+  padding: 0 0.1rem;
+}
+.chips .chip button.x:hover { opacity: 1; }
+/* all: unset drops the focus ring, and the shared :where() rule has no specificity. */
+.chips .chip button.x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
+
+/* Sigma status is a fifth thing colour means here, so it borrows the four state colours
+ * rather than introducing any. The line it draws is the one the app already acts on:
+ * AUTO_ATTACH_STATUSES is exactly stable and test. */
+.chip.stable { background: var(--go-bg); color: var(--go-fg); }
+.chip.test { background: var(--info-bg); color: var(--info-fg); }
+.chip.experimental { background: var(--warn-bg); color: var(--warn-fg); }
+.chip.deprecated, .chip.unsupported { background: var(--stop-bg); color: var(--stop-fg); }
+
+/* A technique can carry 200+ vetted rules. Past a couple of dozen the row stops being
+ * a glance and becomes the wall it replaced, so the tail goes to the details drawer. */
+.chip.more { background: transparent; color: var(--ink-3); border: 1px dashed var(--rule-strong); }
+
+.callout {
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.8rem;
+  font-size: var(--t-sm);
+}
+.callout.stop { background: var(--stop-bg); color: var(--stop-fg); }
+.callout b { font-weight: 600; }
+.callout a { color: inherit; text-decoration: underline; }
+
+/* ---------------------------------------------------------------- lifecycle rail */
+
+.lifecycle { display: flex; gap: 2px; margin: 0.8rem 0 0.2rem; }
+.lifecycle div {
+  flex: 1;
+  font-size: 0.72rem;
+  color: var(--ink-3);
+  padding-top: 0.3rem;
+  border-top: 3px solid var(--rule);
+  line-height: 1.25;
+}
+.lifecycle div.done { border-top-color: var(--rule-strong); color: var(--ink-3); }
+.lifecycle div.current { border-top-color: var(--accent); color: var(--ink); font-weight: 500; }
+
+/* ---------------------------------------------------------------- tables */
+
+table { border-collapse: collapse; width: 100%; font-size: var(--t-sm); }
+th, td { text-align: left; padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); background: var(--panel-2); font-size: var(--t-xs); }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--panel-2); }
+table.keyed th { width: 12rem; background: transparent; font-size: var(--t-sm); color: var(--ink-2); font-weight: 400; }
+table.keyed tr:hover td { background: transparent; }
+table.keyed td { font-weight: 500; }
+/* The rail is 19rem wide; a 12rem key column would leave values wrapping to slivers. */
+.rail table.keyed th { width: 7.5rem; }
+/* A compact key/value list in a 19rem rail reads better without rules; per-cell
+ * borders there break into two segments and look like a rendering fault. */
+.rail table.keyed th, .rail table.keyed td { padding: 0.22rem 0; border-bottom: 0; }
+.rail table.keyed td { padding-left: 0.6rem; }
+
+.rows { display: flex; flex-direction: column; }
+.row {
+  display: block;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--rule);
+  color: inherit;
+}
+.row:last-child { border-bottom: 0; }
+.row:hover { background: var(--panel-2); text-decoration: none; }
+.row .title { font-weight: 500; }
+.row .meta { font-size: var(--t-xs); color: var(--ink-3); display: flex; gap: 0.9rem; flex-wrap: wrap; margin-top: 0.15rem; }
+
+/* ---------------------------------------------------------------- forms + buttons */
+
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+.actions form { display: inline; }
+
+button, .btn {
+  font: inherit;
+  font-size: var(--t-sm);
+  font-weight: 500;
+  padding: 0.33rem 0.75rem;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-block;
+}
+button:hover, .btn:hover { filter: brightness(1.08); text-decoration: none; }
+button.quiet, .btn.quiet {
+  background: var(--panel);
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+button.quiet:hover, .btn.quiet:hover { background: var(--panel-2); }
+button.tiny, .btn.tiny { padding: 0.1rem 0.45rem; font-size: var(--t-xs); }
+
+form.stack p { margin: 0 0 0.85rem; }
+form.stack label { display: block; font-weight: 500; font-size: var(--t-sm); margin-bottom: 0.2rem; }
+form.stack .helptext { display: block; font-size: var(--t-xs); color: var(--ink-3); margin-top: 0.2rem; }
+
+input[type="text"], input[type="url"], input[type="number"], input[type="date"],
+input[type="password"], select, textarea {
+  width: 100%;
+  padding: 0.34rem 0.5rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-sm);
+}
+select[multiple] { min-height: 9rem; }
+textarea.query { font-family: var(--mono); font-size: var(--t-sm); }
+ul.errorlist { color: var(--stop-fg); margin: 0.25rem 0; padding-left: 1.1rem; font-size: var(--t-sm); }
+
+.toolbar { display: flex; gap: 0.6rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 0.9rem; }
+.toolbar label { display: block; font-size: var(--t-xs); color: var(--ink-2); margin-bottom: 0.15rem; }
+.toolbar > div { flex: 0 0 auto; }
+.toolbar .grow { flex: 1 1 14rem; }
+.toolbar .push { margin-left: auto; }
+
+/* ---------------------------------------------------------------- code */
+
+pre {
+  background: var(--panel-2);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.75rem 0.9rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: var(--t-sm);
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 0 0 0.7rem;
+}
+code { font-family: var(--mono); font-size: 0.92em; }
+.prose { white-space: pre-wrap; max-width: 68ch; }
+
+details > summary { cursor: pointer; font-size: var(--t-sm); color: var(--ink-2); padding: 0.25rem 0; }
+details > summary:hover { color: var(--ink); }
+
+/* ---------------------------------------------------------------- empty states */
+
+.empty { padding: 1.5rem 1rem; text-align: center; color: var(--ink-2); font-size: var(--t-sm); }
+.empty p { margin: 0 0 0.7rem; }
+
+/* ---------------------------------------------------------------- matrix */
+
+.matrix { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.9rem; align-items: flex-start; }
+.matrix .col { flex: 0 0 11.5rem; }
+.matrix .col > h3 {
+  margin: 0 0 0.35rem;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--ink-2);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--rule-strong);
+}
+.matrix .col > h3 span { display: block; font-weight: 400; color: var(--ink-3); }
+.cell {
+  border: 1px solid var(--rule);
+  border-left-width: 3px;
+  border-radius: 2px;
+  padding: 0.22rem 0.38rem;
+  margin-bottom: 2px;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  background: var(--panel);
+}
+.cell a { font-family: var(--mono); font-weight: 500; }
+.cell.never { border-left-color: var(--rule-strong); color: var(--ink-2); }
+.cell.clean { border-left-color: var(--go-fg); background: var(--go-bg); color: var(--go-fg); }
+.cell.gap { border-left-color: var(--warn-fg); background: var(--warn-bg); color: var(--warn-fg); }
+.cell.detection { border-left-color: var(--info-fg); background: var(--info-bg); color: var(--info-fg); }
+.cell.clean a, .cell.gap a, .cell.detection a { color: inherit; }
+.cell details > summary { font-size: 0.7rem; padding: 0.1rem 0; }
+.cell.sub { margin: 2px 0 0 0.5rem; font-size: 0.71rem; }
+
+.legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: var(--t-xs); color: var(--ink-2); margin-bottom: 0.9rem; }
+.legend span.key { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 2px; margin-right: 0.35rem; vertical-align: -1px; }
+.key.never { background: var(--neutral-bg); border: 1px solid var(--rule-strong); }
+.key.clean { background: var(--go-bg); border: 1px solid var(--go-fg); }
+.key.gap { background: var(--warn-bg); border: 1px solid var(--warn-fg); }
+.key.detection { background: var(--info-bg); border: 1px solid var(--info-fg); }
+
+/* ---------------------------------------------------------------- misc */
+
+.stat { display: flex; justify-content: space-between; gap: 1rem; font-size: var(--t-sm); padding: 0.2rem 0; }
+.stat dt { color: var(--ink-2); }
+.stat dd { margin: 0; font-weight: 500; }
+
+.pager { font-size: var(--t-sm); color: var(--ink-2); margin-top: 0.8rem; display: flex; gap: 0.9rem; }
+
+/* ---------------------------------------------------------------- view toggle */
+
+.view-toggle { display: inline-flex; margin-bottom: 0.9rem; border: 1px solid var(--rule-strong); border-radius: 3px; overflow: hidden; }
+.view-toggle a { padding: 0.3rem 0.75rem; font-size: var(--t-sm); color: var(--ink-2); background: var(--panel); }
+.view-toggle a + a { border-left: 1px solid var(--rule-strong); }
+.view-toggle a:hover { background: var(--panel-2); color: var(--ink); text-decoration: none; }
+.view-toggle a[aria-current="page"] { background: var(--accent-soft); color: var(--ink); font-weight: 500; }
+
+/* ---------------------------------------------------------------- board */
+
+.board-columns { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+.board-column { flex: 0 0 17rem; min-width: 0; background: var(--panel-2); border: 1px solid var(--rule); border-radius: 4px; padding: 0.5rem; align-self: flex-start; }
+.board-column .empty { border: 1px dashed var(--rule-strong); border-radius: 3px; padding: 0.7rem; }
+.lane-head { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; margin: 0.1rem 0.2rem 0.5rem; }
+.lane-head h2 { margin: 0; font-size: var(--t-sm); font-weight: 600; }
+.lane-head .count { color: var(--ink-3); font-weight: 400; font-variant-numeric: tabular-nums; }
+.hunt-card { margin-bottom: .5rem; padding: 0.55rem 0.7rem; }
+.hunt-card .title { font-size: var(--t-sm); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.hunt-card .meta { margin-top: 0.25rem; display: flex; flex-wrap: wrap; gap: 0 0.7rem; font-size: var(--t-xs); color: var(--ink-3); }
+.hunt-card .gate-blocked { display: inline-block; margin-top: 0.35rem; }
+.card-progress { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; font-size: var(--t-xs); color: var(--ink-2); }
+.card-progress progress { flex: 1; height: 0.4rem; accent-color: var(--accent); }
+/* The label stays for screen readers; the select reads as "move to" from its position. */
+.hunt-card .move-hunt { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
+.hunt-card .move-hunt select { flex: 1; min-width: 0; }
+.hunt-card .move-hunt label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.board-column.is-drop-target { outline: 2px solid currentColor; outline-offset: 2px; }
+.hunt-card[draggable="true"] { cursor: grab; }
+.hunt-card[draggable="true"]:active { cursor: grabbing; }
+
+/* Priority reuses the four state colours already carrying meaning elsewhere; the text
+ * label stays so colour is never the only signal. */
+.priority { font-weight: 500; }
+.priority.high { color: var(--stop-fg); }
+.priority.medium { color: var(--warn-fg); }
+.priority.low { color: var(--go-fg); }
+
+/* The lock glyph is aria-hidden and paired with text, matching the pattern the chip
+ * colours already follow: colour/icon plus a written label, never colour/icon alone. */
+.gate-blocked { color: var(--stop-fg); font-size: var(--t-sm); }
+
+.theme-toggle {
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  color: var(--ink-2);
+  width: 100%;
+  text-align: left;
+  font-size: var(--t-xs);
+  padding: 0.3rem 0.5rem;
+}
+.theme-toggle:hover { background: var(--panel-2); filter: none; color: var(--ink); }
+
+
+/* Hunt detail: summary strip, collapsible groups, assessment card. The page is a
+ * work surface, so the plan and the tasks come first and reference material folds away. */
+.head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.head-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+.summary {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 1.6rem;
+  margin: 0.9rem 0 1.2rem; padding: 0.55rem 1rem;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 3px;
+}
+.summary div { display: flex; align-items: baseline; gap: 0.4rem; white-space: nowrap; }
+.summary dt { font-size: var(--t-xs); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.summary dd { margin: 0; font-size: var(--t-sm); }
+
+.small { font-size: var(--t-sm); }
+.xs { font-size: var(--t-xs); }
+.flush-p { margin: 0 0 0.3rem; }
+.flush-h { margin-top: 0; }
+.item { margin: 0 0 0.45rem; font-size: var(--t-sm); }
+p.label { margin: 0.6rem 0 0.25rem; font-size: var(--t-xs); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.obj-title { margin-top: 0; }
+.obj-title .small { font-weight: 400; }
+.row-actions { margin: 0.7rem 0 0; }
+.actions .inline-form { display: flex; gap: 0.4rem; flex: 1 1 18rem; }
+.inline-form select { flex: 1 1 auto; min-width: 0; }
+
+details.fold { border-top: 1px solid var(--rule); margin-top: 0.6rem; padding-top: 0.2rem; }
+details.fold > summary { font-weight: 500; }
+details.fold[open] > summary { color: var(--ink); }
+details.fold-panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 3px; padding: 0.4rem 1rem 0.2rem; margin-bottom: 0.7rem; }
+details.fold-panel > summary { font-weight: 500; font-size: var(--t-sm); padding: 0.3rem 0; }
+details.fold-panel[open] > summary { margin-bottom: 0.5rem; border-bottom: 1px solid var(--rule); }
+details.fold-panel > .panel { border: 0; padding: 0; background: none; }
+
+.decision { margin: 0.1rem 0 0.5rem; font-size: var(--t-md); }
+.decision .chip { font-size: var(--t-sm); padding: 0.15rem 0.7rem; }
+.ratings { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 0.8rem; font-size: var(--t-xs); color: var(--ink-2); }
+.ratings .chip { margin-left: 0.15rem; }
+.panel .chips { margin-bottom: 0.2rem; }
+.context details.fold:first-of-type { border-top: 0; margin-top: 0; }
+
+/* Task detail */
+.two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.two-up > .panel { margin-bottom: 0.7rem; }
+p.label.first { margin-top: 0; }
+.mapped .chips { margin-bottom: 0.3rem; }
+.status-cell { width: 10rem; }
+.result-form label { display: block; font-size: var(--t-xs); color: var(--ink-2); margin: 0.4rem 0 0.15rem; }
+.result-form .two-up label:first-child { margin-top: 0; }
+.result-form select, .result-form textarea { width: 100%; }
+
+/* Shell: grouped nav and the dashboard's pipeline strip */
+.nav-group { margin: 0.9rem 0 0.2rem; padding: 0 0.5rem; font-size: 0.72rem; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+.btn.start { display: block; text-align: center; margin: 0 0 0.9rem; }
+
+.pipeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: 0.5rem; margin: 0 0 1.4rem; }
+.pipeline a {
+  display: flex; flex-direction: column; gap: 0.1rem; padding: 0.55rem 0.8rem;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 3px;
+  font-size: var(--t-xs); color: var(--ink-2);
+}
+.pipeline a:hover { border-color: var(--accent); text-decoration: none; color: var(--ink); }
+.pipeline .num { font-size: var(--t-xl); font-weight: 600; line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.more-row { padding: 0.5rem 1rem; font-size: var(--t-sm); color: var(--ink-3); border-top: 1px solid var(--rule); }
+
+/* Hunt list: stage tabs and a column-aligned row */
+.stage-tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.9rem; border-bottom: 1px solid var(--rule); }
+.stage-tabs a {
+  padding: 0.35rem 0.7rem; margin-bottom: -1px; font-size: var(--t-sm); color: var(--ink-2);
+  border-bottom: 2px solid transparent;
+}
+.stage-tabs a:hover { color: var(--ink); text-decoration: none; }
+.stage-tabs a[aria-current="page"] { color: var(--ink); font-weight: 500; border-bottom-color: var(--accent); }
+.stage-tabs .count { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+.hunt-row { display: grid; grid-template-columns: minmax(0, 1fr) 8.5rem 5rem 7rem 8rem; gap: 0.8rem; align-items: center; }
+.hunt-head { padding: 0.4rem 0.85rem 0.4rem calc(0.85rem + 3px); font-size: var(--t-xs); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--rule); }
+.hunt-row .meta { align-items: center; gap: 0.4rem 0.6rem; }
+/* Imported intel hunts can have paragraph-length titles; the full text is on the hunt page. */
+.hunt-row .title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.toolbar .grow input { width: 100%; }
+.hunt-row progress { width: 3.5rem; height: 0.4rem; vertical-align: middle; accent-color: var(--accent); }
+.chip.high { background: var(--stop-bg); color: var(--stop-fg); }
+.chip.medium { background: var(--warn-bg); color: var(--warn-fg); }
+
+@media (max-width: 60rem) {
+  .hunt-head { display: none; }
+  .hunt-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .hunt-row > :nth-child(n+3) { grid-column: 1 / -1; }
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; flex-direction: row; align-items: center; gap: 0.8rem; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--rule); }
+  .nav { flex-direction: row; flex-wrap: wrap; }
+  .sidebar-foot { margin: 0 0 0 auto; flex-direction: row; align-items: center; }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .two-up { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; }
+  .main { padding: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Intel: gate status, TLP markings, seed states, heatmap overlay */
+.chip.ready, .chip.promoted, .chip.tlp.green { background: var(--go-bg); color: var(--go-fg); }
+.chip.limited, .chip.tlp.amber, .chip.tlp.amber_strict { background: var(--warn-bg); color: var(--warn-fg); }
+.chip.insufficient, .chip.tlp.red { background: var(--stop-bg); color: var(--stop-fg); }
+.cell.intel { border-left-color: var(--stop-fg); background: var(--stop-bg); color: var(--stop-fg); }
+.cell.intel a { color: inherit; }
+.key.intel { background: var(--stop-bg); border: 1px solid var(--stop-fg); }
+
+/* Comments: a rolling feed that opens scrolled to the newest entry */
+.comment-feed { display: flex; flex-direction: column-reverse; max-height: 24rem; overflow-y: auto; margin-bottom: .6rem; }

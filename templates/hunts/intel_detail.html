@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}{{ report.intel_id }} {{ report.title }} - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'intel-list' %}">Intel</a><i>/</i>{{ report.intel_id }}</div>
+
+<div class="page-head">
+  <h1>{{ report.title }}</h1>
+  <div class="sub"><span class="id">{{ report.intel_id }}</span> &nbsp;{% include "hunts/partials/_intel_badges.html" %}
+    {% for actor in report.actors.all %}<span class="chip id">{{ actor.attack_id }} {{ actor.name }}</span> {% endfor %}</div>
+</div>
+
+<div class="cols">
+  <div>
+    {# ponytail: imported Markdown is shown pre-wrapped, not rendered - no Markdown library or sanitizer is installed. Add both if analysts find raw tables unreadable. #}
+    {% for label, body in sections %}{% if body %}
+    <h2>{{ label }}</h2>
+    <div class="panel"><p class="prose" style="margin:0">{{ body }}</p></div>
+    {% endif %}{% endfor %}
+
+    <h2>Hunt seeds</h2>
+    {% block seeds %}
+    {# One form: checkboxes post to promote-seeds; each Dismiss button retargets the same form with formaction, so there are no nested forms and no JS. #}
+    <form method="post" action="{% url 'promote-seeds' report.pk %}" class="panel flush">{% csrf_token %}
+      {# Disabled default button: Enter in a Reason input would otherwise implicitly submit via the first Dismiss button and dismiss the wrong seed. #}
+      <button type="submit" disabled hidden aria-hidden="true" tabindex="-1"></button>
+      <table>
+        <tr>{% if can_promote %}<th></th>{% endif %}<th>Seed</th><th>Status</th>{% if perms.hunts.change_huntseed %}<th></th>{% endif %}</tr>
+        {% for seed in seeds %}
+        <tr>
+          {% if can_promote %}<td>{% if seed.status == 'open' %}<input type="checkbox" name="seed" value="{{ seed.pk }}" aria-label="Select seed {{ forloop.counter }}">{% endif %}</td>{% endif %}
+          <td class="prose">{{ seed.text }}</td>
+          <td><span class="chip {{ seed.status }}">{{ seed.get_status_display }}</span>{% if seed.hunt %} <a class="mono" href="{{ seed.hunt.get_absolute_url }}">{{ seed.hunt.hunt_id }}</a>{% endif %}{% if seed.dismiss_reason %}<br><span class="muted">{{ seed.dismiss_reason }}</span>{% endif %}</td>
+          {% if perms.hunts.change_huntseed %}<td>{% if seed.status == 'open' %}<input name="reason_{{ seed.pk }}" placeholder="Reason (optional)" aria-label="Reason for dismissing seed {{ forloop.counter }}"> <button class="quiet tiny" type="submit" formaction="{% url 'dismiss-seed' seed.pk %}">Dismiss</button>{% endif %}</td>{% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty"><p>This report lists no hunt actions.</p></div></td></tr>
+        {% endfor %}
+      </table>
+      {% if can_promote and open_seeds %}<div class="actions" style="padding:.6rem"><button type="submit">Create hunt from selected</button></div>{% endif %}
+    </form>
+    {% endblock %}
+
+    <h2>ATT&amp;CK techniques</h2>
+    <div class="panel flush">
+      <table>
+        <tr><th>Technique</th><th>Tactic</th><th>Evidence</th><th>Visibility</th></tr>
+        {% for row in techniques %}
+        <tr>
+          <td>{% if row.technique %}<a class="chip id" href="{{ row.technique.get_absolute_url }}">{{ row.technique.attack_id }}</a>{% if row.technique.attack_id != row.raw_id %} <span class="muted">reported as {{ row.raw_id }}</span>{% endif %}{% else %}<span class="mono">{{ row.raw_id }}</span> <span class="muted">not in ATT&amp;CK {{ attack_version }}</span>{% endif %}</td>
+          <td>{{ row.tactic }}</td>
+          <td class="prose">{{ row.evidence }}</td>
+          <td>{{ row.visibility_note }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="muted">No techniques mapped.</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    <h2>Indicators</h2>
+    <div class="panel flush">
+      <table>
+        <tr><th>Type</th><th>Value</th><th>Confidence</th><th>Source</th></tr>
+        {% for ioc in indicators %}
+        <tr><td>{{ ioc.ioc_type }}</td><td class="mono">{{ ioc.value }}</td><td>{{ ioc.get_confidence_display|default:"—" }}</td><td class="prose">{{ ioc.source }}</td></tr>
+        {% empty %}
+        <tr><td colspan="4" class="muted">No indicators reported.</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    {% if cves %}
+    <h2>CVEs and advisories</h2>
+    <div class="panel flush">
+      <table>
+        <tr><th>CVE / advisory</th><th>Summary</th><th>Relevance</th></tr>
+        {% for cve in cves %}<tr><td>{{ cve.identifier }}</td><td class="prose">{{ cve.summary }}</td><td class="prose">{{ cve.relevance }}</td></tr>{% endfor %}
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <aside class="rail">
+    <div class="panel">
+      <h3 style="margin-top:0">Hunts from this intel</h3>
+      {% for hunt in hunts %}
+        <p style="margin:0 0 .3rem;font-size:var(--t-sm)"><a class="mono" href="{{ hunt.get_absolute_url }}">{{ hunt.hunt_id }}</a> {{ hunt.title }}</p>
+      {% empty %}
+        <p class="muted" style="font-size:var(--t-sm);margin:0">None yet.</p>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      <h3 style="margin-top:0">Source files</h3>
+      {% for file in files %}
+        <p style="margin:0 0 .3rem;font-size:var(--t-sm)"><a href="{{ file.file.url }}">{{ file.caption }}</a> <span class="muted">{{ file.uploaded_at|date:"Y-m-d" }}</span></p>
+      {% empty %}
+        <p class="muted" style="font-size:var(--t-sm);margin:0">None attached.</p>
+      {% endfor %}
+    </div>
+
+    {% if report.parse_warnings %}
+    <div class="panel">
+      <details>
+        <summary>Import warnings</summary>
+        <p class="prose" style="font-size:var(--t-sm)">{{ report.parse_warnings }}</p>
+      </details>
+    </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - HuntOps{% endblock %}
+{% block content %}
+<div class="page-head head-row">
+  <div>
+    <h1>Dashboard</h1>
+    <div class="sub">Where the programme stands and what is waiting on someone.</div>
+  </div>
+  <div class="head-actions">
+    <a class="btn quiet" href="{% url 'hunt-board' %}">Board</a>
+  </div>
+</div>
+
+<nav class="pipeline" aria-label="Hunts by stage">
+  {% for stage, label, count in pipeline %}
+  <a href="{% url 'hunt-list' %}?status={{ stage }}"><span class="num">{{ count }}</span><span>{{ label }}</span></a>
+  {% endfor %}
+</nav>
+
+<div class="cols">
+  <div>
+    <h2>Needs attention</h2>
+    <div class="panel flush">
+      <div class="rows">
+        {% for hunt in blocked %}
+        <a class="row striped blocked" href="{{ hunt.get_absolute_url }}">
+          <div class="title"><span class="mono">{{ hunt.hunt_id }}</span> &nbsp;{{ hunt.title|truncatechars:90 }}</div>
+          <div class="meta"><span class="chip blocked">Blocked at the feasibility gate</span><span>{{ hunt.owner|default:"Unassigned" }}</span></div>
+        </a>
+        {% endfor %}
+        {% if blocked_total > blocked|length %}<div class="more-row">{{ blocked_total }} hunts are blocked in all. <a href="{% url 'hunt-list' %}?status=feasibility_review">See them</a>.</div>{% endif %}
+
+        {% for task in unrecorded %}
+        <a class="row striped" href="{{ task.get_absolute_url }}">
+          <div class="title"><span class="mono">{{ task.task_id }}</span> &nbsp;{{ task.title|truncatechars:90 }}</div>
+          <div class="meta"><span class="chip {{ task.result }}">{{ task.get_result_display }}</span><span>No outcome recorded</span></div>
+        </a>
+        {% endfor %}
+        {% if unrecorded_total > unrecorded|length %}<div class="more-row">{{ unrecorded_total }} executed tasks have no outcome recorded in all.</div>{% endif %}
+
+        {% if open_seeds %}
+        <a class="row striped" href="{% url 'intel-list' %}">
+          <div class="title">{{ open_seeds }} open hunt seed{{ open_seeds|pluralize }} in intel reports</div>
+          <div class="meta"><span>Promote or dismiss</span></div>
+        </a>
+        {% endif %}
+
+        {% if not blocked and not unrecorded and not open_seeds %}
+        <div class="empty"><p>Nothing is waiting on anyone.</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <h2>Active hunts</h2>
+    <div class="panel flush">
+      <div class="rows">
+        {% for hunt in active %}
+        <a class="row striped {{ hunt.feasibility_decision|lower }}" href="{{ hunt.get_absolute_url }}">
+          <div class="title"><span class="mono">{{ hunt.hunt_id }}</span> &nbsp;{{ hunt.title|truncatechars:90 }}</div>
+          <div class="meta">
+            <span><b>{{ hunt.task_done }}</b> of {{ hunt.task_total }} tasks executed</span>
+            <span>{{ hunt.owner|default:"Unassigned" }}</span>
+          </div>
+        </a>
+        {% empty %}
+        <div class="empty"><p>No hunts are in progress.</p></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <aside class="rail">
+    <div class="panel">
+      <h3 class="flush-h">Coverage</h3>
+      <p class="decision"><b>{{ coverage.hunted }}</b> <span class="muted">of {{ coverage.total }} techniques hunted</span></p>
+      <dl class="stat"><dt>Detection created</dt><dd class="num">{{ coverage.detection|default:0 }}</dd></dl>
+      <dl class="stat"><dt>Gap identified</dt><dd class="num">{{ coverage.gap|default:0 }}</dd></dl>
+      <dl class="stat"><dt>Hunted, no finding</dt><dd class="num">{{ coverage.clean|default:0 }}</dd></dl>
+      <p class="flush-p"><a class="quiet" href="{% url 'heatmap' %}">Open the heatmap</a></p>
+    </div>
+  </aside>
+</div>
+{% endblock %}

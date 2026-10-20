@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}{{ librarytask.library_id }} {{ librarytask.title }} - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'library-list' %}">Task library</a><i>/</i>{{ librarytask.library_id }}</div>
+
+<div class="page-head">
+  <h1>{{ librarytask.title }}</h1>
+  <div class="sub">
+    <span class="id">{{ librarytask.library_id }}</span>
+    {% if librarytask.key %}<span class="chip id" title="Identity in exported YAML files">{{ librarytask.key }}</span>{% endif %}
+    <span class="chip {% if librarytask.provenance == 'curated' %}detection{% elif librarytask.provenance == 'user' %}go{% endif %}">{{ librarytask.get_provenance_display }}</span>
+  </div>
+</div>
+
+{% if librarytask.is_reference %}
+<div class="callout">
+  <b>Reference material.</b> Seeded entries stay read-only so they keep working as worked examples for whoever reads them next. Duplicate it to get an editable copy of your own.
+</div>
+{% endif %}
+
+<div class="actions">
+  {% if perms.hunts.add_librarytask %}
+  <form method="post" action="{% url 'library-duplicate' librarytask.pk %}">{% csrf_token %}<button>Duplicate to edit</button></form>
+  {% endif %}
+  {% if not librarytask.is_reference and perms.hunts.change_librarytask %}
+  <a class="btn quiet" href="{% url 'library-update' librarytask.pk %}">Edit</a>
+  {% endif %}
+  {% if librarytask.key %}<a class="btn quiet" href="{% url 'library-export-one' librarytask.pk %}">Export YAML</a>{% endif %}
+  <a class="btn quiet" href="{% url 'library-list' %}">Back to library</a>
+</div>
+
+<div class="cols">
+  <div>
+    <h2>Query</h2>
+    <pre>{{ librarytask.query|default:"No query recorded." }}</pre>
+
+    {% if librarytask.notes %}
+    <h2>How to use this</h2>
+    <div class="panel"><p class="prose" style="margin:0">{{ librarytask.notes }}</p></div>
+    {% endif %}
+
+    <h2>What a hit looks like</h2>
+    <div class="panel">
+      <table class="keyed">
+        <tr><th>Positive indicator</th><td class="prose">{{ librarytask.expected_positive|default:"—" }}</td></tr>
+        <tr><th>Benign baseline</th><td class="prose">{{ librarytask.expected_benign|default:"—" }}</td></tr>
+      </table>
+    </div>
+
+    <h2>Sigma rules</h2>
+    <div class="panel">
+      <div class="chips">
+        {% for rule in librarytask.sigma_rules.all|slice:":24" %}
+          <span class="chip {{ rule.status|slugify }}"
+                title="{{ rule.status|default:"unknown status" }} — {{ rule.author|default:"Unknown author" }} — {{ rule.license }}">
+            <span class="label">{{ rule.title }}</span>
+          </span>
+        {% empty %}<span class="muted" style="font-size:var(--t-sm)">None linked.</span>{% endfor %}
+        {% if librarytask.sigma_rules.count > 24 %}<span class="chip more">{{ librarytask.sigma_rules.count }} in all</span>{% endif %}
+      </div>
+      {% if librarytask.sigma_rules.exists %}
+      <details>
+        <summary>Show details &mdash; {{ librarytask.sigma_rules.count }} linked</summary>
+        {% for rule in librarytask.sigma_rules.all %}
+          <p style="margin:.3rem 0;font-size:var(--t-sm)">{{ rule.title }} <span class="chip">{{ rule.status|default:"unknown" }}</span>
+            <br><span class="muted" style="font-size:var(--t-xs)">{{ rule.author|default:"Unknown author" }} &mdash; {{ rule.license }}</span></p>
+        {% endfor %}
+      </details>
+      {% endif %}
+    </div>
+  </div>
+
+  <aside class="rail">
+    <div class="panel">
+      <h3 style="margin-top:0">Detail</h3>
+      <table class="keyed">
+        <tr><th>Techniques</th><td>
+          {% for t in librarytask.techniques.all %}<a class="chip id" href="{{ t.get_absolute_url }}">{{ t.attack_id }}</a> {% empty %}<span class="muted">None</span>{% endfor %}
+        </td></tr>
+        <tr><th>Tool</th><td>{{ librarytask.hunting_tool|default:"—" }}</td></tr>
+        <tr><th>Data sources</th><td>{% for source in librarytask.data_sources.all %}{{ source.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td></tr>
+        <tr><th>Added by</th><td>{{ librarytask.created_by|default:"Seeded" }}</td></tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3 style="margin-top:0">Used by</h3>
+      {% for hunt in hunts %}
+        <p style="margin:0 0 .3rem;font-size:var(--t-sm)"><a class="mono" href="{{ hunt.get_absolute_url }}">{{ hunt.hunt_id }}</a> {{ hunt.title }}</p>
+      {% empty %}
+        <p class="muted" style="font-size:var(--t-sm);margin:0">Not used in a hunt yet.</p>
+      {% endfor %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

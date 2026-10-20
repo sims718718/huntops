@@ -1,0 +1,24 @@
+<div id="results" aria-live="polite">{% if filter_error %}<p role="alert">{{ filter_error }}</p>{% endif %}<p class="muted">{{ paginator.count }} results</p><div class="panel flush">
+  <table>
+    <tr><th>ID</th><th>Report</th><th>Marking</th><th>Techniques</th><th>Open seeds</th><th>Hunts</th></tr>
+    {% for report in object_list %}
+    <tr>
+      <td><a class="mono" href="{{ report.get_absolute_url }}">{{ report.intel_id }}</a></td>
+      <td>{{ report.title }}</td>
+      <td>{% include "hunts/partials/_intel_badges.html" %}</td>
+      <td class="num">{{ report.technique_count }}</td>
+      <td class="num">{{ report.open_seed_count }}</td>
+      <td class="num">{{ report.hunt_count }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6">
+      <div class="empty">
+        <p>No intel imported yet. Import a threat-intel-hunt-framework run.</p>
+        <code>manage.py import_intel --dir ./threat-hunting</code>
+      </div>
+    </td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% include 'hunts/partials/_pager.html' %}</div>

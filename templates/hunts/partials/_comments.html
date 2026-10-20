@@ -1,0 +1,23 @@
+<section class="panel">
+  <h3 style="margin-top:0">Comments</h3>
+  {# column-reverse makes the scroll box start at its bottom (newest) without JS; the inner div keeps oldest-to-newest reading order. #}
+  <div class="comment-feed">
+    <div>
+      {% for comment in comments %}
+        <p style="margin:0 0 .5rem;font-size:var(--t-sm)">
+          <span class="muted" style="font-size:var(--t-xs)">{{ comment.author|default:"Unknown" }} &middot; {{ comment.created_at|date:"Y-m-d H:i" }}</span>
+          <br>{{ comment.body|linebreaksbr }}
+        </p>
+      {% empty %}
+        <p class="muted" style="font-size:var(--t-sm);margin:0 0 .5rem">No comments yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+  {% if perms.hunts.add_comment %}
+  <form method="post" action="{{ post_url }}" class="stack">
+    {% csrf_token %}
+    <textarea name="body" rows="3" placeholder="Add a comment" required></textarea>
+    <button class="quiet" type="submit">Post comment</button>
+  </form>
+  {% endif %}
+</section>

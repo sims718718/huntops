@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: huntops
+      POSTGRES_USER: huntops
+      POSTGRES_PASSWORD: huntops
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U huntops"]
+      interval: 5s
+      retries: 10
+
+  web:
+    build: .
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    environment:
+      POSTGRES_DB: huntops
+      POSTGRES_USER: huntops
+      POSTGRES_PASSWORD: huntops
+      POSTGRES_HOST: db
+    volumes:
+      - .:/app
+      - evidence:/app/media
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  evidence:

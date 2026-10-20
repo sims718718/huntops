@@ -1,0 +1,16 @@
+{% load static %}
+{# Vendored, not CDN: air-gapped installs have no egress at page load. #}
+<link rel="stylesheet" href="{% static 'vendor/codemirror/codemirror.min.css' %}">
+<script src="{% static 'vendor/codemirror/codemirror.min.js' %}"></script>
+<script>
+  // No CodeMirror grammar exists for SPL/KQL, so this is line numbers, wrapping and a
+  // real editing surface rather than syntax colouring. fromTextArea syncs back on submit.
+  document.querySelectorAll('textarea.query').forEach(function (area) {
+    CodeMirror.fromTextArea(area, {
+      lineNumbers: true,
+      readOnly: area.readOnly,
+      lineWrapping: true,
+      viewportMargin: Infinity
+    }).setSize(null, 300);
+  });
+</script>

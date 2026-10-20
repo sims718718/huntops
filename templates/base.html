@@ -1,0 +1,86 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"historyRestoreAsHxRequest":false,"refreshOnHistoryMiss":true,"historyCacheSize":0}'>
+  <title>{% block title %}HuntOps{% endblock %}</title>
+  <script>
+    // Set before first paint so switching themes never flashes the old one.
+    (function () {
+      try {
+        var stored = localStorage.getItem("huntops-theme");
+        var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="{% static 'css/huntops.css' %}">
+  <link rel="stylesheet" href="{% static 'css/htmx.css' %}">
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' data-login-url="{% url 'login' %}">
+{% with un=request.resolver_match.url_name|default:"" %}
+<div class="shell">
+  <nav class="sidebar">
+    <div class="brand"><b>HuntOps</b> <span>{{ user.username|default:"" }}</span></div>
+
+    {% if perms.hunts.add_hunt %}<a class="btn start" href="{% url 'hunt-create' %}">Start a hunt</a>{% endif %}
+
+    <div class="nav">
+      <a href="{% url 'home' %}" {% if un == 'home' %}aria-current="page"{% endif %}>Dashboard</a>
+      <p class="nav-group">Work</p>
+      <a href="{% url 'hunt-list' %}" {% if 'hunt' in un or 'objective' in un or un == 'task-detail' or un == 'task-create' or un == 'task-update' %}aria-current="page"{% endif %}>Hunts</a>
+      <a href="{% url 'intel-list' %}" {% if 'intel' in un %}aria-current="page"{% endif %}>Intel</a>
+      <p class="nav-group">Reference</p>
+      <a href="{% url 'library-list' %}" {% if 'library' in un %}aria-current="page"{% endif %}>Task library</a>
+      <a href="{% url 'technique-list' %}" {% if 'technique' in un %}aria-current="page"{% endif %}>ATT&amp;CK</a>
+      <a href="{% url 'heatmap' %}" {% if un == 'heatmap' %}aria-current="page"{% endif %}>Coverage</a>
+      <a href="{% url 'metrics' %}" {% if un == 'metrics' %}aria-current="page"{% endif %}>Metrics</a>
+      <p class="nav-group">Admin</p>
+      <a href="/admin/">Admin site</a>
+    </div>
+
+    <div class="sidebar-foot">
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-live="polite">Switch theme</button>
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}<button class="quiet tiny" style="width:100%;text-align:left">Log out</button>
+        </form>
+      {% else %}
+        <a class="btn quiet tiny" href="{% url 'login' %}">Log in</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <main class="main {% block main_class %}{% endblock %}" id="content">{% block content %}{% endblock %}</main>
+</div>
+{% endwith %}
+
+<script>
+  (function () {
+    var button = document.getElementById("theme-toggle");
+    var root = document.documentElement;
+    function label() {
+      button.textContent = root.getAttribute("data-theme") === "dark" ? "Switch to light" : "Switch to dark";
+    }
+    label();
+    button.addEventListener("click", function () {
+      var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem("huntops-theme", next); } catch (e) {}
+      label();
+    });
+  })();
+</script>
+<div id="hx-error" class="toast" hidden>
+  <p id="hx-error-message" role="alert" aria-live="assertive" aria-atomic="true"></p>
+  <button type="button" class="quiet tiny" data-dismiss-hx-error>Dismiss</button>
+</div>
+<!-- htmx 2.0.10: vendored upstream bytes; see static/vendor/htmx/README.md. -->
+<script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
+<script src="{% static 'js/htmx-support.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

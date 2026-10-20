@@ -1,0 +1,18 @@
+/* Transport feedback uses the existing console palette in both themes. */
+.toast {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 50;
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: .625rem .875rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 2px 12px rgb(0 0 0 / .2);
+  font-size: var(--t-sm);
+}
+
+.toast[hidden] { display: none; }
+.toast p { margin: 0 0 .5rem; }

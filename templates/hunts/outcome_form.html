@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{% if form.instance.pk %}Edit outcome{% else %}Add outcome{% endif %} - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs">
+  <a href="{% url 'hunt-list' %}">Hunts</a><i>/</i>
+  {% if task %}<a href="{{ task.get_absolute_url }}">{{ task.task_id }}</a>{% else %}<a href="{{ hunt.get_absolute_url }}">{{ hunt.hunt_id }}</a>{% endif %}<i>/</i>
+  {% if form.instance.pk %}Edit outcome{% else %}New outcome{% endif %}
+</div>
+
+<div class="page-head">
+  <h1>{% if form.instance.pk %}Edit outcome{% else %}Add outcome{% endif %}</h1>
+  <div class="sub">{% if task %}{{ task.task_id }} {{ task.title }}{% else %}{{ hunt.hunt_id }} {{ hunt.title }}{% endif %}</div>
+</div>
+
+<div class="panel" style="max-width:52rem">
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="actions" style="margin:0"><button type="submit">Save outcome</button></div>
+  </form>
+</div>
+
+{% if form.instance.pk %}
+<div class="panel" style="max-width:52rem">
+  <h3 style="margin-top:0">Evidence</h3>
+  {% for item in form.instance.evidence.all %}
+    <p style="margin:0 0 .3rem;font-size:var(--t-sm)"><a href="{{ item.file.url }}">{{ item.caption|default:item.file.name }}</a>
+      <br><span class="muted" style="font-size:var(--t-xs)">{{ item.uploaded_by|default:"" }} {{ item.uploaded_at|date:"Y-m-d" }}</span></p>
+  {% empty %}
+    <p class="muted" style="font-size:var(--t-sm);margin:0 0 .5rem">Nothing attached.</p>
+  {% endfor %}
+  <a class="quiet" href="{% url 'evidence-create-outcome' form.instance.pk %}">Add evidence</a>
+</div>
+
+<div style="max-width:52rem">
+  {% url 'comment-create-outcome' form.instance.pk as post_url %}
+  {% include "hunts/partials/_comments.html" with comments=form.instance.comments.all post_url=post_url %}
+</div>
+{% endif %}
+{% endblock %}

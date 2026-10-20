@@ -1,0 +1,31 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+.env
+*.sqlite3
+
+media/
+staticfiles/
+
+.idea/
+.vscode/
+.DS_Store
+.worktrees/
+.superpowers/
+
+# Intel framework output: your own runs, imported with import_intel --dir
+/threat-hunting/
+# Library exports and air-gapped import bundles you drop into the checkout
+/library/
+/enterprise-attack.json
+/sigma-master.zip
+
+# Local tooling and development-process notes, not part of the app
+.claude/
+docs/superpowers/
+huntops-prd.md
+CLAUDE.md
+AGENTS.md

@@ -1,0 +1,21 @@
+<div id="board" aria-live="polite">
+  {% if filter_error %}<p role="alert">{{ filter_error }}</p>{% endif %}
+  {% if move_error %}<div role="alert" class="panel">
+    <p>{{ move_error }}</p>
+    {% if rejected_hunt %}<a href="{% url 'hunt-update' rejected_hunt.pk %}">Review feasibility</a>{% endif %}
+  </div>{% endif %}
+  <div class="board-columns" tabindex="0" aria-label="Hunt stages">
+    {% for column in columns %}
+      <section class="board-column" data-stage="{{ column.status }}"
+               aria-labelledby="stage-{{ column.status }}">
+        <header class="lane-head">
+          <h2 id="stage-{{ column.status }}">{{ column.label }} <span class="count">{{ column.hunts|length }}</span></h2>
+          {% if column.blocked %}<span class="chip blocked">{{ column.blocked }} blocked</span>{% endif %}
+        </header>
+        {% for hunt in column.hunts %}
+          {% include 'hunts/partials/_hunt_card.html' %}
+        {% empty %}<p class="empty">No hunts in this stage.</p>{% endfor %}
+      </section>
+    {% endfor %}
+  </div>
+</div>

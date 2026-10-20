@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Import intel - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'intel-list' %}">Intel</a><i>/</i>Import</div>
+<div class="page-head"><h1>Import intel</h1><div class="sub">One threat-intel-hunt-framework run: its <span class="mono">-report.md</span>, plus <span class="mono">-analysis.md</span> and <span class="mono">-hunt-plan.md</span> if you have them.</div></div>
+
+{% if error %}<div class="callout stop" role="alert">{{ error }}</div>{% endif %}
+
+{% if preview %}
+<div class="panel">
+  <h3 style="margin-top:0">{% if preview.report %}Update {{ preview.report.intel_id }}{% else %}New intel report{% endif %}</h3>
+  <table class="keyed">
+    <tr><th>Techniques</th><td>{{ preview.techniques }}</td></tr>
+    <tr><th>Indicators</th><td>{{ preview.indicators }}</td></tr>
+    <tr><th>CVEs / advisories</th><td>{{ preview.cves }}</td></tr>
+    <tr><th>Hunt seeds</th><td>{{ preview.seeds }}</td></tr>
+    <tr><th>Hunt-plan stories</th><td>{{ preview.stories }}</td></tr>
+    {% if preview.unresolved %}<tr><th>Not in ATT&amp;CK</th><td class="mono">{{ preview.unresolved|join:", " }}</td></tr>{% endif %}
+  </table>
+  {% if preview.report %}
+    {% if preview.new_seeds %}<h3>New seeds</h3><ul>{% for s in preview.new_seeds %}<li>{{ s }}</li>{% endfor %}</ul>{% endif %}
+    {% if preview.stale_seeds %}<h3>Seeds no longer in the report (marked stale)</h3><ul>{% for s in preview.stale_seeds %}<li>{{ s }}</li>{% endfor %}</ul>{% endif %}
+  {% endif %}
+  {% if preview.warnings %}<details><summary>{{ preview.warnings|length }} warning{{ preview.warnings|length|pluralize }}</summary><ul>{% for w in preview.warnings %}<li>{{ w }}</li>{% endfor %}</ul></details>{% endif %}
+  <form method="post" class="actions">{% csrf_token %}
+    <input type="hidden" name="step" value="confirm">
+    {% for name, content in named.items %}<input type="hidden" name="name" value="{{ name }}"><input type="hidden" name="content" value="{{ content }}">{% endfor %}
+    <button type="submit">Confirm import</button>
+    <a class="btn quiet" href="{% url 'intel-import' %}">Start over</a>
+  </form>
+</div>
+{% else %}
+<form method="post" enctype="multipart/form-data" class="panel">{% csrf_token %}
+  {% for field, suffix, label in upload_fields %}
+  <p>
+    <label for="upload-{{ field }}">{{ label }}{% if field == "report" %} (required){% else %} (optional){% endif %}</label>
+    <input type="file" id="upload-{{ field }}" name="{{ field }}" accept=".md"{% if field == "report" %} required{% endif %}>
+    <span class="muted">&lt;slug&gt;{{ suffix }}</span>
+  </p>
+  {% endfor %}
+  <div class="actions"><button type="submit">Preview</button></div>
+</form>
+{% endif %}
+{% endblock %}

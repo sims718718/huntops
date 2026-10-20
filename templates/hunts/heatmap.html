@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Coverage - HuntOps{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Coverage</h1>
+  <div class="sub">
+    {{ hunted }} technique{{ hunted|pluralize }} hunted by at least one executed task. A parent shows its own status only &mdash;
+    hunting a sub-technique does not cover the parent.
+  </div>
+</div>
+
+<form method="get" class="toolbar">
+  <div>
+    <label for="hunt_type">Hunt type</label>
+    <select name="hunt_type" id="hunt_type">
+      <option value="">All types</option>
+      {% for value, label in hunt_types %}<option value="{{ value }}" {% if value == filters.hunt_type %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="environment_profile">Environment</label>
+    <select name="environment_profile" id="environment_profile">
+      <option value="">All environments</option>
+      {% for profile in profiles %}<option value="{{ profile.pk }}" {% if profile.pk|stringformat:"s" == filters.environment_profile %}selected{% endif %}>{{ profile.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div><label for="start">Started after</label><input type="date" name="start" id="start" value="{{ filters.start }}"></div>
+  <div><label for="end">Started before</label><input type="date" name="end" id="end" value="{{ filters.end }}"></div>
+  <div><label><input type="checkbox" name="intel" value="1" {% if show_intel %}checked{% endif %}> Show intel not yet hunted</label></div>
+  <div><button class="quiet" type="submit">Apply</button></div>
+  <div><a class="btn quiet" href="{% url 'heatmap' %}">Clear</a></div>
+</form>
+
+<div class="legend">
+  {% for key, label in labels.items %}<span><span class="key {{ key }}"></span>{{ label }}</span>{% endfor %}
+</div>
+
+<div class="matrix">
+  {% for tactic, entries in columns %}
+  <div class="col">
+    <h3>{{ tactic.name }}<span class="num">{{ entries|length }}</span></h3>
+    {% for entry in entries %}
+      <div class="cell {{ entry.status }}">
+        <a href="{{ entry.technique.get_absolute_url }}">{{ entry.technique.attack_id }}</a>
+        {{ entry.technique.name }}
+        {% if entry.subs %}
+          <details>
+            <summary>{{ entry.covered }} of {{ entry.subs|length }} sub-techniques</summary>
+            {% for sub, status in entry.subs %}
+              <div class="cell sub {{ status }}"><a href="{{ sub.get_absolute_url }}">{{ sub.attack_id }}</a> {{ sub.name }}</div>
+            {% endfor %}
+          </details>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  {% empty %}
+  <div class="empty">
+    <p>No techniques imported yet, so there is nothing to map coverage against.</p>
+    <code>manage.py import_attack</code>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

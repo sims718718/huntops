@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{% if form.instance.pk %}Edit objective{% else %}Add objective{% endif %} - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'hunt-list' %}">Hunts</a><i>/</i>Objective</div>
+
+<div class="page-head">
+  <h1>{% if form.instance.pk %}Edit {{ form.instance.objective_id }}{% else %}Add an objective{% endif %}</h1>
+  <div class="sub">One line of investigation against the hypothesis. A second objective should be a genuinely different angle, not a restatement of the first.</div>
+</div>
+
+<div class="panel" style="max-width:46rem">
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="actions" style="margin:0"><button type="submit">Save objective</button></div>
+  </form>
+</div>
+{% endblock %}

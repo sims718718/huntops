@@ -1,0 +1,283 @@
+# Worked examples loaded by `python manage.py seed_examples`.
+# Techniques and data sources are referenced by ATT&CK id / name; Sigma rules are not
+# listed because attaching a technique auto-attaches the matching imported rules.
+intel: apt29-past-year
+hunts:
+- title: APT29 / Midnight Blizzard — Cloud-Identity Abuse & CaptiveCrunch Campaign Hunt
+  trigger_type: cti
+  hunt_type: TIO
+  status: approved
+  priority: high
+  trigger_description: |-
+    Source (external plan): ./threat-hunting/intel-reports/apt29-past-year-report.md (this org's own intel-report pipeline output), received 2026-09-07, TLP:CLEAR.
+
+    Relevance: APT29/Midnight Blizzard is a persistently active, SVR-attributed espionage actor targeting government, diplomatic, defense, NGO, think-tank, and cloud/tech-sector organizations. Its past-year tradecraft (OAuth device-code phishing, ASP abuse, CaptiveCrunch hotel/venue Wi-Fi hijacking) is not vertical-specific — any organization with traveling staff, M365/Entra ID tenancy, or diplomatic/policy-adjacent work is plausibly in scope. [Original plan flags: state explicitly whether this org's industry vertical/executive travel profile changes relevance once an environment profile exists.]
+  trigger_source_links:
+  - https://www.microsoft.com/en-us/security/blog/2026/07/31/captivecrunch-midnight-blizzard-targets-travelers-worldwide-for-malware-delivery-and-credential-theft/
+  hypothesis: We hypothesize that APT29/Midnight Blizzard-linked actors (including the moderate-confidence sub-clusters UNC6293, UNC7005/Storm-2945, and the CaptiveCrunch operators) may have established initial access, credential access, or persistence in our environment over the past 12 months via cloud-identity abuse and/or CaptiveCrunch-related tooling, evidenced by anomalous OAuth device-code or application-specific-password (ASP) authentication events, CornFlake/ChocoShell endpoint artifacts, or network connections to known CaptiveCrunch C2 infrastructure, in Entra ID sign-in/audit logs, EDR endpoint telemetry, and DNS/proxy logs. We will validate this by executing three targeted sub-hunts (device-code/ASP anomaly detection, endpoint malware-artifact hunting, and C2 infrastructure correlation) across a 90-day lookback, within a 10-business-day execution window (2026-09-08 to 2026-09-19).
+  competing_hypotheses: Sub-cluster attribution to APT29/SVR proper is moderate confidence, not certain — UNC5976 in particular may belong to a different Russian intelligence service. Findings should be reported as "APT29/Midnight-Blizzard-adjacent," not asserted as definitive APT29 activity, unless corroborated.
+  research_notes: |-
+    Internal sources: no previous hunt on record against this actor in this instance; architecture documentation, detection-coverage map, and asset/traveler inventory were not available to the original planning run.
+
+    External sources: MITRE ATT&CK G0016 (APT29); Microsoft MSTIC (CaptiveCrunch, Storm-2372, Teams vishing); Google GTIG (ICE RELIC/UNC6293/UNC7005/UNC5976); CISA AA24-057A; AWS Security Blog; Volexity; Trend Micro; Check Point Research (flagged unverified). No public Sigma rules exist yet for CaptiveCrunch or GRAPELOADER/WINELOADER.
+
+    Key findings: (1) past-year initial access is overwhelmingly cloud-identity/OAuth-abuse and phishing-driven, not CVE-driven; (2) CaptiveCrunch (Storm-2945/UNC7005, disclosed Jul 2026) hijacked hotel/venue captive-portal Wi-Fi worldwide to deliver CornFlake (Go RAT) and ChocoShell (PowerShell infostealer); (3) sub-cluster attribution to APT29/SVR is moderate confidence, not certain.
+  feasibility_data_availability: CONDITIONAL
+  feasibility_data_quality: CONDITIONAL
+  feasibility_skillset: CONDITIONAL
+  feasibility_timeline: GO
+  feasibility_tooling: CONDITIONAL
+  feasibility_decision: CONDITIONAL
+  scope_in: 'Cloud infrastructure/identity (M365 / Entra ID tenant) — Story 1. Workstations/endpoints, traveling-staff laptops especially — Story 2. Network perimeter (DNS, proxy, egress) — Story 3. Time window: 2025-09-08 to 2026-09-07 (90-day rolling lookback for initial pass, extend to full 12 months if retention allows). In-scope assets: all Entra ID tenant users with priority on executives, government-affairs, policy, and recent international/conference travelers; Windows endpoints with recent non-corporate VPN/Wi-Fi connections; egress telemetry (DNS, proxy, firewall) for the same population.'
+  scope_exclusions: 'Not in scope: production servers (unless Story 2 indicates lateral movement); OT/ICS (no ATT&CK-for-ICS techniques identified for this actor); non-Windows endpoints, pending confirmation of EDR coverage for other OS.'
+  start_date: '2026-09-08'
+  end_date: '2026-09-19'
+  techniques:
+  - T1036
+  - T1070.004
+  - T1071.001
+  - T1204.001
+  - T1528
+  - T1543.003
+  - T1548.002
+  - T1562.001
+  - T1566.001
+  - T1621
+  - T1665
+  objectives:
+  - title: Device-Code / ASP Authentication Anomaly Hunt
+    methodology: |-
+      Phase 1 (Collection): export 90 days of Entra ID sign-in events where the authentication protocol indicates device-code flow; export 'Add application-specific password' audit events for the same window; build a 90-day-prior baseline (day -180 to day -90) of each user's typical ASN/user-agent.
+      Phase 2 (Analysis): join device-code and ASP-creation events against baseline, flagging first-seen ASN/user-agent combinations and first-time ASP creation; pull 24h of mailbox-rule/forwarding/search activity for every flagged event.
+      Phase 3 (Validation): correlate flagged accounts against the traveler/executive population; interview owners where feasible; document each as TP/FP/indeterminate.
+    expected_outcome_malicious: 'Device-code sign-in from a never-before-seen ASN/user-agent, followed within 24h by mailbox-rule or forwarding-rule creation; correlation with Story 3 C2 infrastructure. Action: escalate to IR, treat as a potential Security Incident.'
+    expected_outcome_benign: 'All device-code/ASP events resolve to previously-seen ASN/user-agent combinations or explainable IT-managed flows, with no follow-on mailbox anomalies. Action: document as negative finding; the baseline itself is a Detection Opportunity.'
+    tasks:
+    - title: Baseline and flag anomalous device-code/ASP authentication events
+      query: |-
+        SigninLogs
+        | where AuthenticationProtocol == "deviceCode"
+        | join kind=leftanti (
+            SigninLogs
+            | where TimeGenerated between (ago(180d) .. ago(90d))
+            | summarize KnownASNUA = make_set(strcat(ASN, "|", UserAgent)) by UserPrincipalName
+          ) on UserPrincipalName
+        | where TimeGenerated > ago(30d)
+        | where strcat(ASN, "|", UserAgent) !in (KnownASNUA)
+        | project TimeGenerated, UserPrincipalName, ASN, UserAgent, IPAddress, Location
+
+        [Platform-agnostic pseudocode from the source plan — SIEM was Unknown at planning time; translate to KQL/SPL/Elastic DSL once confirmed.]
+      reference_procedure: |-
+        Behavior: OAuth device-code / ASP authentication abuse to bypass MFA.
+        Evidence: device-code grant-type sign-in with a user-agent/ASN combination never seen before for that user, or a first-time ASP-creation event.
+        Actor: APT29/Midnight Blizzard and moderate-confidence sub-clusters (UNC6293, Storm-2372/CozyLarch-adjacent).
+      expected_positive: 'Device-code sign-in from a never-before-seen ASN/user-agent, followed within 24h by mailbox-rule or forwarding-rule creation; correlation with Story 3 C2 infrastructure. Action: escalate to IR, treat as a potential Security Incident.'
+      expected_benign: 'All device-code/ASP events resolve to previously-seen ASN/user-agent combinations or explainable IT-managed flows, with no follow-on mailbox anomalies. Action: document as negative finding; the baseline itself is a Detection Opportunity.'
+      techniques:
+      - T1204.001
+      - T1528
+      - T1621
+      data_sources:
+      - Entra ID Audit Logs
+      - Entra ID Sign-in Logs
+      - M365 Unified Audit Log
+  - title: CornFlake / ChocoShell Endpoint Artifact Hunt
+    methodology: |-
+      Phase 1 (Collection): query EDR service-installation telemetry for service name "svchost32" or DisplayName containing "Cloud Sync"; query PowerShell/AMSI-provider telemetry for known AMSI-bypass indicators; query process telemetry for vssadmin/wmic shadow-copy deletion; cross-reference hosts with Wi-Fi/VPN logs showing non-corporate SSID in the prior 7 days.
+      Phase 2 (Analysis): any service/task name match is high-confidence regardless of co-occurrence; AMSI-tamper and VSS-deletion hits without the name match require same-host, 1-hour co-occurrence before flagging; pull full process ancestry and network connections for every flagged host.
+      Phase 3 (Validation): isolate and forensically image any confirmed service-name match before further triage; compare recovered hashes against known IOCs; document confirmed/ruled-out status per host.
+    expected_outcome_malicious: 'Confirmed "svchost32"/"Cloud Sync Service" service on one or more hosts, ideally with a recovered binary matching a known CornFlake/ChocoShell hash, with AMSI-tamper and VSS-deletion co-occurring. Action: escalate immediately to IR — high-confidence Security Incident.'
+    expected_outcome_benign: 'No host has the service/task name pattern; any AMSI-adjacent or VSS-deletion activity resolves to known, approved tooling. Action: document as negative finding; retain the query as a standing Analytics/Detection artifact.'
+    tasks:
+    - title: Detect CornFlake/ChocoShell service masquerade, AMSI tampering, and VSS deletion
+      query: |-
+        DeviceEvents
+        | where ActionType == "ServiceInstalled"
+        | where ServiceName =~ "svchost32" or DisplayName has "Cloud Sync"
+        | union (
+            DeviceProcessEvents
+            | where ProcessCommandLine has_any ("vssadmin delete shadows", "wmic shadowcopy delete")
+          )
+        | union (
+            DeviceEvents
+            | where ActionType == "AmsiProviderLoaded" or ProcessCommandLine has "AmsiScanBuffer"
+          )
+        | project Timestamp, DeviceName, ActionType, ServiceName, ProcessCommandLine
+
+        [Platform-agnostic pseudocode from the source plan — EDR was Unknown at planning time.]
+      reference_procedure: |-
+        Behavior: CornFlake/ChocoShell installation, AMSI bypass, anti-forensic VSS deletion.
+        Evidence: service named "svchost32"/"Cloud Sync Service"; AMSI-patch byte pattern in PowerShell process memory; vssadmin/wmic shadow-copy delete co-occurring with a flagged PowerShell session.
+        Actor: Storm-2945/UNC7005 (CaptiveCrunch operators, moderate-confidence APT29 sub-cluster).
+      expected_positive: 'Confirmed "svchost32"/"Cloud Sync Service" service on one or more hosts, ideally with a recovered binary matching a known CornFlake/ChocoShell hash, with AMSI-tamper and VSS-deletion co-occurring. Action: escalate immediately to IR — high-confidence Security Incident.'
+      expected_benign: 'No host has the service/task name pattern; any AMSI-adjacent or VSS-deletion activity resolves to known, approved tooling. Action: document as negative finding; retain the query as a standing Analytics/Detection artifact.'
+      techniques:
+      - T1036
+      - T1070.004
+      - T1543.003
+      - T1548.002
+      - T1562.001
+      data_sources:
+      - EDR PowerShell Script-Block Logging
+      - EDR Process Creation
+      - EDR Service/Scheduled-Task Telemetry
+      - Wi-Fi/VPN Connection Logs
+  - title: CaptiveCrunch / GRAPELOADER-WINELOADER Infrastructure Correlation Hunt
+    methodology: |-
+      Phase 1 (Collection): query DNS resolver logs for exact matches against the published CaptiveCrunch domain list; query proxy/firewall/TLS-SNI logs for the same domains plus the published IP list; run a secondary pattern query for any newly-registered domain matching *ms365*/*owa* not already on the SSO allowlist.
+      Phase 2 (Analysis): any exact-match hit is high-confidence and escalated immediately; pattern-match hits are triaged against the known-good allowlist, only unexplained residuals are flagged.
+      Phase 3 (Validation): for any flagged host, pull the full session to determine if a phishing page was rendered or payload retrieved; cross-reference against Stories 1 and 2 for corroboration.
+    expected_outcome_malicious: 'Confirmed DNS/proxy hit against a listed domain or IP, with an identifiable source host/user. Action: escalate to IR immediately — Security Incident; correlate with Stories 1 and 2 for scope.'
+    expected_outcome_benign: 'Zero hits against the exact IOC list and no unexplained lookalike-pattern domains. Action: document as negative finding; explicitly note this is time-bound (IOCs age) — recommend re-running against updated feeds on a recurring cadence.'
+    tasks:
+    - title: Correlate DNS/proxy telemetry against CaptiveCrunch/GRAPELOADER-WINELOADER infrastructure
+      query: |-
+        DnsEvents
+        | where Name in (
+            "ms365-device.com", "ms365-live.com", "m365-owa.com", "owa-ms365.com",
+            "ophibre.com", "bravecup.com", "bakenhof.com", "silry.com",
+            "findcloudflare.com", "cloudflare.redirectpartners.com"
+          )
+          or ipv4_lookup in (
+            "31.57.243.154", "38.146.28.75", "38.146.28.132",
+            "104.194.159.150", "107.189.26.194", "213.145.86.112"
+          )
+        | project TimeGenerated, Computer, Name, ClientIP
+
+        // Supplementary lookalike-pattern check
+        DnsEvents
+        | where Name matches regex @"(ms365|owa)"
+        | where Name !in (KnownGoodAllowlist)
+
+        [Platform-agnostic pseudocode from the source plan — SIEM was Unknown at planning time.]
+      reference_procedure: |-
+        Behavior: C2 beaconing / phishing-page retrieval to known and lookalike infrastructure.
+        Evidence: DNS query or TLS SNI matching a listed domain, or matching the *ms365*/*owa* lookalike pattern for a domain not on the known-good allowlist.
+        Actor: Storm-2945/UNC7005 (CaptiveCrunch); historical GRAPELOADER/WINELOADER operators.
+      expected_positive: 'Confirmed DNS/proxy hit against a listed domain or IP, with an identifiable source host/user. Action: escalate to IR immediately — Security Incident; correlate with Stories 1 and 2 for scope.'
+      expected_benign: 'Zero hits against the exact IOC list and no unexplained lookalike-pattern domains. Action: document as negative finding; explicitly note this is time-bound (IOCs age) — recommend re-running against updated feeds on a recurring cadence.'
+      techniques:
+      - T1071.001
+      - T1566.001
+      - T1665
+      data_sources:
+      - DNS Resolver Logs
+      - Passive DNS/TI Enrichment
+      - Proxy/Firewall Logs
+- title: Device-code / ASP authentication after an unsolicited IT-support contact
+  trigger_type: cti
+  hunt_type: TIO
+  status: backlog
+  trigger_description: |-
+    From INTEL-001 (APT29 / Midnight Blizzard Activity, Past 12 Months (Sept 2025–Sept 2026)).
+
+    Hunt for OAuth device-code or application-specific-password authentication flows completed shortly after a user reports (or logs show) an unsolicited IT-support contact via Teams/email/phone, evidenced by Entra ID/Azure AD sign-in logs showing device-code grant type paired with anomalous user-agent or geolocation, in the identity provider's sign-in/audit logs.
+  trigger_source_links:
+  - https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-057a
+  hypothesis: |-
+    We hypothesize that APT29/Midnight Blizzard-linked actors (including the moderate-
+    confidence sub-clusters UNC6293, UNC7005/Storm-2945, and the CaptiveCrunch
+    operators) may have established initial access, credential access, or persistence
+    in our environment over the past 12 months via cloud-identity abuse and/or
+    CaptiveCrunch-related tooling, evidenced by anomalous OAuth device-code or
+    application-specific-password (ASP) authentication events, CornFlake/ChocoShell
+    endpoint artifacts, or network connections to known CaptiveCrunch C2
+    infrastructure, in Entra ID sign-in/audit logs, EDR endpoint telemetry, and
+    DNS/proxy logs. We will validate this by executing three targeted sub-hunts
+    (device-code/ASP anomaly detection, endpoint malware-artifact hunting, and C2
+    infrastructure correlation) across a 90-day lookback, within a 10-business-day
+    execution window (2026-09-08 to 2026-09-19).
+  techniques:
+  - T1005
+  - T1008
+  - T1020
+  - T1021.001
+  - T1027
+  - T1030
+  - T1036.004
+  - T1041
+  - T1053.005
+  - T1056.004
+  - T1059.001
+  - T1059.003
+  - T1070.004
+  - T1071.001
+  - T1090
+  - T1112
+  - T1113
+  - T1115
+  - T1120
+  - T1123
+  - T1125
+  - T1189
+  - T1195.002
+  - T1204.001
+  - T1204.002
+  - T1497
+  - T1528
+  - T1543.003
+  - T1547.001
+  - T1548.002
+  - T1555.003
+  - T1566.001
+  - T1566.002
+  - T1572
+  - T1573.001
+  - T1621
+  - T1665
+  - T1685
+  promoted_from_seed: 1
+  objectives:
+  - title: Device-Code / ASP Authentication Anomaly Hunt
+    methodology: |-
+      Phase 1: Data Collection
+      1. Export all Entra ID sign-in log events for the past 90 days where authenticationProtocol/protocol indicates device-code flow (or equivalent field in [FILL IN: SIEM]).
+      2. Export all Entra ID audit log events for "Add application-specific password" (or IdP-equivalent event) for the same window.
+      3. Build a 90-day-prior baseline (day -180 to day -90) of each in-scope user's typical ASN/user-agent combinations for comparison.
+
+      Phase 2: Analysis
+      1. Join device-code sign-in events against each user's baseline; flag first-seen ASN/user-agent combinations.
+      2. Join ASP-creation events against the same baseline; flag any first-time ASP creation for accounts that have never used one before.
+      3. For every flagged event, pull the subsequent 24 hours of mailbox-rule, mail-forwarding-rule, and mailbox-search/export activity for that account.
+
+      Phase 3: Validation
+      1. Correlate flagged accounts against the traveler/executive population identified in Scope.
+      2. Interview account owners for flagged events where feasible (did they knowingly authorize a device-code flow, e.g., via a legitimate kiosk/shared-device sign-in?).
+      3. Document each flagged event as true positive, false positive, or indeterminate.
+    expected_outcome_malicious: |-
+      - Device-code sign-in from a never-before-seen ASN/user-agent, followed within 24h by mailbox-rule or forwarding-rule creation
+      - Correlation of the sign-in source IP/ASN with any of the CaptiveCrunch/GRAPELOADER-WINELOADER infrastructure from Story 3
+      - Action: Escalate to IR per incident response plan; treat as a potential **Security Incident** outcome (see Tasks)
+    expected_outcome_benign: |-
+      - All device-code/ASP events in the window resolve to previously-seen ASN/user-agent combinations, or to explainable IT-managed flows
+      - No follow-on mailbox anomalies for any flagged account
+      - Action: Document as negative finding; consider as a **Detection Opportunity** outcome (baseline is now established for a standing rule) rather than closing with no artifact
+    tasks:
+    - title: Device-Code / ASP Authentication Anomaly Hunt
+      query: |-
+        SigninLogs
+        | where AuthenticationProtocol == "deviceCode"
+        | join kind=leftanti (
+            SigninLogs
+            | where TimeGenerated between (ago(180d) .. ago(90d))
+            | summarize KnownASNUA = make_set(strcat(ASN, "|", UserAgent)) by UserPrincipalName
+          ) on UserPrincipalName
+        | where TimeGenerated > ago(30d)
+        | where strcat(ASN, "|", UserAgent) !in (KnownASNUA)
+        | project TimeGenerated, UserPrincipalName, ASN, UserAgent, IPAddress, Location
+      expected_positive: |-
+        - Device-code sign-in from a never-before-seen ASN/user-agent, followed within 24h by mailbox-rule or forwarding-rule creation
+        - Correlation of the sign-in source IP/ASN with any of the CaptiveCrunch/GRAPELOADER-WINELOADER infrastructure from Story 3
+        - Action: Escalate to IR per incident response plan; treat as a potential **Security Incident** outcome (see Tasks)
+      expected_benign: |-
+        - All device-code/ASP events in the window resolve to previously-seen ASN/user-agent combinations, or to explainable IT-managed flows
+        - No follow-on mailbox anomalies for any flagged account
+        - Action: Document as negative finding; consider as a **Detection Opportunity** outcome (baseline is now established for a standing rule) rather than closing with no artifact
+      techniques:
+      - T1204.001
+      - T1528
+      - T1621
+      data_sources:
+      - Entra ID Audit Logs
+      - Entra ID Sign-in Logs
+      - M365 Unified Audit Log

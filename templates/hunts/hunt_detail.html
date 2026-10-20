@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}{{ hunt.hunt_id }} {{ hunt.title }} - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'hunt-list' %}">Hunts</a><i>/</i>{{ hunt.hunt_id }}</div>
+
+<div class="page-head head-row">
+  <div>
+    <h1>{{ hunt.title }}</h1>
+    <div class="sub"><span class="id">{{ hunt.hunt_id }}</span> &nbsp;{{ hunt.get_hunt_type_display|default:"No hunt type set" }}{% if hunt.intel_report.tlp %} &nbsp;<span class="chip tlp {{ hunt.intel_report.tlp }}">{{ hunt.intel_report.get_tlp_display }}</span>{% endif %}</div>
+  </div>
+  <div class="head-actions">
+    {% if perms.hunts.change_hunt %}<a class="btn" href="{% url 'hunt-update' hunt.pk %}">Edit hunt</a>{% endif %}
+    {% if perms.hunts.add_objective %}<a class="btn quiet" href="{% url 'objective-create' hunt.pk %}">Add objective</a>{% endif %}
+    <a class="btn quiet" href="{% url 'hunt-report' hunt.pk %}">Export report</a>
+  </div>
+</div>
+
+<div class="lifecycle">
+  {% for label, position in hunt.lifecycle %}<div class="{{ position }}">{{ label }}</div>{% endfor %}
+</div>
+
+{% if hunt.gate_blocked %}
+<div class="callout stop">
+  <b>Blocked at the feasibility gate.</b>
+  Record a GO or CONDITIONAL decision to move this hunt to Approved. If the data is not there,
+  a Hunt Lead can log an override with a reason.
+  {% if perms.hunts.change_hunt %}<a href="{% url 'hunt-update' hunt.pk %}">Open the assessment</a>.{% endif %}
+</div>
+{% endif %}
+
+{% if deprecated %}
+<div class="callout">
+  <b>Deprecated techniques referenced.</b>
+  {% for t in deprecated %}<a href="{{ t.get_absolute_url }}" class="mono">{{ t.attack_id }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+  no longer appear in the imported ATT&amp;CK bundle. This hunt stays pinned to {{ hunt.attack_version|default:"its original version" }}, so nothing has changed underneath it.
+</div>
+{% endif %}
+
+<dl class="summary">
+  <div><dt>Status</dt><dd><span class="chip">{{ hunt.get_status_display }}</span></dd></div>
+  <div><dt>Feasibility</dt><dd>{% if hunt.feasibility_decision %}<span class="chip {{ hunt.feasibility_decision|lower }}">{{ hunt.get_feasibility_decision_display }}</span>{% else %}<span class="muted">Not assessed</span>{% endif %}</dd></div>
+  <div><dt>Tasks</dt><dd>{% if task_progress.total %}<b>{{ task_progress.executed }}</b> of {{ task_progress.total }} executed{% else %}<span class="muted">None yet</span>{% endif %}</dd></div>
+  <div><dt>Outcomes</dt><dd>{% if outcome_total %}<b>{{ outcome_total }}</b> recorded{% else %}<span class="muted">None yet</span>{% endif %}</dd></div>
+  <div><dt>Owner</dt><dd>{{ hunt.owner|default:"Unassigned" }}</dd></div>
+  <div><dt>Priority</dt><dd>{{ hunt.get_priority_display|default:"—" }}</dd></div>
+  <div><dt>Dates</dt><dd>{% if hunt.start_date or hunt.end_date %}{{ hunt.start_date|date:"Y-m-d"|default:"?" }} &rarr; {{ hunt.end_date|date:"Y-m-d"|default:"?" }}{% else %}<span class="muted">—</span>{% endif %}</dd></div>
+</dl>
+
+<div class="cols">
+  <div>
+    <h2>Hypothesis</h2>
+    <div class="panel">
+      <p class="prose flush-p">{{ hunt.hypothesis|default:"No hypothesis recorded. A hunt without one is a fishing trip." }}</p>
+      <details class="fold">
+        <summary>Trigger: {{ hunt.get_trigger_type_display|default:"not set" }}</summary>
+        <p class="prose">{{ hunt.trigger_description|default:"Nothing recorded yet." }}</p>
+        {% for link in hunt.trigger_source_links %}<p class="flush-p"><a href="{{ link }}">{{ link }}</a></p>{% endfor %}
+        {% if hunt.spun_off_from %}
+        <p class="muted">Spun off from <a href="{{ hunt.spun_off_from.get_absolute_url }}" class="mono">{{ hunt.spun_off_from.task_id }}</a></p>
+        {% endif %}
+      </details>
+      {% if hunt.competing_hypotheses or hunt.research_notes %}
+      <details class="fold">
+        <summary>Research</summary>
+        {% if hunt.competing_hypotheses %}<h3>Competing hypotheses</h3><p class="prose">{{ hunt.competing_hypotheses }}</p>{% endif %}
+        {% if hunt.research_notes %}<h3>Notes</h3><p class="prose">{{ hunt.research_notes }}</p>{% endif %}
+      </details>
+      {% endif %}
+    </div>
+
+    <h2>Objectives and tasks</h2>
+    {% for objective in objectives %}
+    <div class="panel">
+      <h3 class="obj-title">
+        <span class="mono">{{ objective.objective_id }}</span> {{ objective.title }}
+        <span class="chip {{ objective.status|lower|cut:" " }}">{{ objective.status }}</span>
+        {% if perms.hunts.change_objective %}<a class="muted small" href="{% url 'objective-update' objective.pk %}">Edit</a>{% endif %}
+      </h3>
+      {% if objective.methodology %}<p class="muted prose small">{{ objective.methodology }}</p>{% endif %}
+
+      <table>
+        <tr><th>Task</th><th>Techniques</th><th>Tool</th><th>Status</th><th>Result</th></tr>
+        {% for task in objective.tasks.all %}
+        <tr>
+          <td><a class="mono" href="{{ task.get_absolute_url }}">{{ task.task_id }}</a> {{ task.title }}</td>
+          <td>{% for t in task.techniques.all %}<a class="chip id" href="{{ t.get_absolute_url }}">{{ t.attack_id }}</a> {% empty %}<span class="muted">None</span>{% endfor %}</td>
+          <td>{{ task.hunting_tool|default:"—" }}</td>
+          <td><span class="chip {{ task.status }}">{{ task.get_status_display }}</span></td>
+          <td>{% if task.result %}<span class="chip {{ task.result }}">{{ task.get_result_display }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="muted">No tasks on this objective yet.</td></tr>
+        {% endfor %}
+      </table>
+
+      {% if perms.hunts.add_task %}
+      <div class="actions row-actions">
+        <a class="btn quiet" href="{% url 'task-create' objective.pk %}">Write a task</a>
+        <form method="post" action="{% url 'attach-library-task' objective.pk %}" class="inline-form">
+          {% csrf_token %}
+          <select name="library_pk" required aria-label="Library task to attach">
+            <option value="">Attach one from the library</option>
+            {% for entry in library %}<option value="{{ entry.pk }}">{{ entry.library_id }} {{ entry.title }}</option>{% endfor %}
+          </select>
+          <button class="quiet" type="submit">Attach</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="panel">
+      <div class="empty">
+        <p>No objectives yet. Each one tests the hypothesis from a different angle, so aim for more than one.</p>
+        {% if perms.hunts.add_objective %}<a class="btn" href="{% url 'objective-create' hunt.pk %}">Add the first objective</a>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <details class="panel fold-panel"{% if not objectives or request.GET.library_q or request.GET.library_page %} open{% endif %}>
+      <summary>Add tasks from the library{% if suggested_tasks_total %} <span class="chip detection">{{ suggested_tasks_total }} suggested</span>{% endif %}</summary>
+      {% include "hunts/partials/_suggested_tasks.html" %}
+      <form method="get" class="toolbar"><div class="grow"><label for="library-q">Search library tasks to attach</label><input type="search" id="library-q" name="library_q" value="{{ request.GET.library_q }}" placeholder="Name, technique or query"></div><button type="submit">Search library</button></form>
+      <nav class="pager" aria-label="Library choices">{% if library_page.has_previous %}<a href="{% querystring library_page=library_page.previous_page_number %}">Previous choices</a>{% endif %}<span>Library page {{ library_page.number }} of {{ library_page.paginator.num_pages }}</span>{% if library_page.has_next %}<a href="{% querystring library_page=library_page.next_page_number %}">More choices</a>{% endif %}</nav>
+    </details>
+  </div>
+
+  <aside class="rail">
+    <div class="panel">
+      <h3 class="flush-h">Assessment</h3>
+      <p class="decision">{% if hunt.feasibility_decision %}<span class="chip {{ hunt.feasibility_decision|lower }}">{{ hunt.get_feasibility_decision_display }}</span>{% else %}<span class="muted">Feasibility not assessed</span>{% endif %}</p>
+      <div class="ratings">
+        {% if hunt.feasibility_data_availability %}<span title="Data availability">Data <span class="chip {{ hunt.feasibility_data_availability|lower }}">{{ hunt.feasibility_data_availability }}</span></span>{% endif %}
+        {% if hunt.feasibility_data_quality %}<span title="Data quality">Quality <span class="chip {{ hunt.feasibility_data_quality|lower }}">{{ hunt.feasibility_data_quality }}</span></span>{% endif %}
+        {% if hunt.feasibility_skillset %}<span title="Skillset">Skills <span class="chip {{ hunt.feasibility_skillset|lower }}">{{ hunt.feasibility_skillset }}</span></span>{% endif %}
+        {% if hunt.feasibility_timeline %}<span title="Timeline">Time <span class="chip {{ hunt.feasibility_timeline|lower }}">{{ hunt.feasibility_timeline }}</span></span>{% endif %}
+        {% if hunt.feasibility_tooling %}<span title="Tooling">Tools <span class="chip {{ hunt.feasibility_tooling|lower }}">{{ hunt.feasibility_tooling }}</span></span>{% endif %}
+      </div>
+      {% if hunt.feasibility_override_by %}
+      <p class="muted small">Override by {{ hunt.feasibility_override_by }}: {{ hunt.feasibility_override_reason }}</p>
+      {% endif %}
+      <p class="label">Data sources</p>
+      <div class="chips">{% for source in hunt.data_sources.all %}<span class="chip">{{ source.name }}</span>{% empty %}<span class="muted small">None selected</span>{% endfor %}</div>
+      <details class="fold">
+        <summary>Scope and environment</summary>
+        <table class="keyed">
+          <tr><th>In scope</th><td>{{ hunt.scope_in|default:"—" }}</td></tr>
+          <tr><th>Exclusions</th><td>{{ hunt.scope_exclusions|default:"—" }}</td></tr>
+          <tr><th>Environment</th><td>{{ hunt.environment_profile|default:"—" }}</td></tr>
+          <tr><th>ATT&amp;CK</th><td>{{ hunt.attack_version|default:"—" }}</td></tr>
+        </table>
+      </details>
+    </div>
+
+    <div class="panel">
+      <h3 class="flush-h">Outcomes</h3>
+      {% for name, count in rollup.items %}
+      <dl class="stat"><dt>{{ name }}</dt><dd class="num">{{ count }}</dd></dl>
+      {% empty %}
+      <p class="muted small">Nothing recorded yet.</p>
+      {% endfor %}
+      {% for outcome in hunt_outcomes %}
+        <p class="item">
+          <a class="chip {{ outcome.outcome_type }}" href="{% url 'outcome-update' outcome.pk %}">{{ outcome.get_outcome_type_display }}</a>
+          {% if outcome.notes %}<br>{{ outcome.notes }}{% endif %}
+          <br><span class="muted xs">{{ outcome.recorded_by|default:"" }} {{ outcome.recorded_at|date:"Y-m-d" }}</span></p>
+      {% endfor %}
+      <p class="flush-p"><a class="quiet" href="{% url 'outcome-create-hunt' hunt.pk %}">Add outcome</a></p>
+      <p class="muted xs">Task-level outcomes are set from each task.</p>
+    </div>
+
+    <div class="panel">
+      <h3 class="flush-h">Evidence</h3>
+      {% for item in hunt_evidence %}
+        <p class="item"><a href="{{ item.file.url }}">{{ item.caption|default:item.file.name }}</a>
+          <br><span class="muted xs">{{ item.uploaded_by|default:"" }} {{ item.uploaded_at|date:"Y-m-d" }}</span></p>
+      {% empty %}
+        <p class="muted small">Nothing attached.</p>
+      {% endfor %}
+      <a class="quiet" href="{% url 'evidence-create-hunt' hunt.pk %}">Add evidence</a>
+    </div>
+
+    {% if hunt.intel_report or prior_hunts or suggested_strategies or stories and perms.hunts.add_objective %}
+    <div class="panel context">
+      <h3 class="flush-h">Context</h3>
+
+      {% if hunt.intel_report %}
+      <details class="fold">
+        <summary>Intel</summary>
+        <p class="flush-p"><a class="mono" href="{{ hunt.intel_report.get_absolute_url }}">{{ hunt.intel_report.intel_id }}</a> {{ hunt.intel_report.title }}</p>
+        <p class="flush-p">{% include "hunts/partials/_intel_badges.html" with report=hunt.intel_report %}</p>
+      </details>
+      {% endif %}
+
+      {% if prior_hunts %}
+      <details class="fold">
+        <summary>Prior hunts on these techniques ({{ prior_hunts|length }})</summary>
+        {# ponytail: shown on detail only, not on create/edit where techniques are chosen - an htmx refresh per chip change isn't worth it yet. #}
+        {% for prior in prior_hunts %}
+          <p class="item"><a class="mono" href="{{ prior.get_absolute_url }}">{{ prior.hunt_id }}</a> {{ prior.title }} <span class="chip">{{ prior.get_status_display }}</span>{% for label, count in prior.rollup %} <span class="chip">{{ label }} {{ count }}</span>{% endfor %}</p>
+        {% endfor %}
+      </details>
+      {% endif %}
+
+      {% if suggested_strategies %}
+      <details class="fold">
+        <summary>Suggested detection strategies ({{ suggested_strategies_total }})</summary>
+        {# Display only: MITRE's analytics are prose, so unlike Sigma rules there is nothing to attach. #}
+        {% include "hunts/partials/_strategy_rows.html" %}
+        {% if suggested_strategies_total > suggested_strategies|length %}<p class="flush-p small"><a href="{% url 'hunt-suggested-strategies' hunt.pk %}" target="_blank" rel="noopener">See all {{ suggested_strategies_total }} suggested strategies</a></p>{% endif %}
+      </details>
+      {% endif %}
+
+      {% if stories and perms.hunts.add_objective %}
+      <details class="fold">
+        <summary>Suggested objectives from {{ hunt.intel_report.intel_id }}</summary>
+        {# ponytail: "Added" is matched on Objective title - no provenance FK. Add Objective.source_story if titles start colliding. #}
+        <form method="post" action="{% url 'attach-intel-stories' hunt.pk %}">{% csrf_token %}
+          {% for story in stories %}
+          <div class="item">
+            {% if story.added %}<span class="chip go">Added</span>{% else %}<input type="checkbox" name="story" value="{{ story.pk }}" id="story-{{ story.pk }}">{% endif %}
+            <label for="story-{{ story.pk }}">{{ story.title }}</label>
+            {% if story.objective %}<details><summary>Objective</summary><p class="prose">{{ story.objective }}</p></details>{% endif %}
+          </div>
+          {% endfor %}
+          <button type="submit" class="quiet">Add selected</button>
+        </form>
+      </details>
+      {% endif %}
+    </div>
+    {% endif %}
+  </aside>
+</div>
+
+{% url 'comment-create-hunt' hunt.pk as post_url %}
+{% include "hunts/partials/_comments.html" with comments=hunt_comments post_url=post_url %}
+{% endblock %}

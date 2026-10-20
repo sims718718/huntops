@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Log in - HuntOps{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Log in</h1>
+  <div class="sub">HuntOps runs on local accounts. Ask a Hunt Lead if you need one.</div>
+</div>
+
+<div class="panel" style="max-width:22rem">
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Log in</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,1 @@
+<form method="get" class="toolbar" hx-get="{{ request.path }}" hx-trigger="submit, input changed delay:300ms, change" hx-sync="this:replace" hx-target="#results" hx-swap="outerHTML" hx-push-url="true">{% include 'hunts/partials/_filter_controls.html' %}</form>

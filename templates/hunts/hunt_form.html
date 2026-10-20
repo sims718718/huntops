@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if form.instance.pk %}Edit {{ form.instance.hunt_id }}{% else %}Start a hunt{% endif %} - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs">
+  <a href="{% url 'hunt-list' %}">Hunts</a>
+  {% if form.instance.pk %}<i>/</i><a href="{{ form.instance.get_absolute_url }}">{{ form.instance.hunt_id }}</a><i>/</i>Edit{% else %}<i>/</i>New{% endif %}
+</div>
+
+<div class="page-head">
+  <h1>{% if form.instance.pk %}Edit {{ form.instance.hunt_id }}{% else %}Start a hunt{% endif %}</h1>
+  <div class="sub">A hunt stays in Feasibility Review until the assessment reads GO or CONDITIONAL, or a Hunt Lead logs an override.</div>
+</div>
+
+<div class="panel" style="max-width:46rem">
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="actions" style="margin:0">
+      <button type="submit">Save hunt</button>
+      <a class="btn quiet" href="{% if form.instance.pk %}{{ form.instance.get_absolute_url }}{% else %}{% url 'hunt-list' %}{% endif %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/technique-picker.js' %}"></script>{% endblock %}

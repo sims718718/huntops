@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Import library tasks - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'library-list' %}">Task library</a><i>/</i>Import</div>
+<div class="page-head">
+  <h1>Import library tasks</h1>
+  <div class="sub">YAML files from your detection-as-code repo: <span class="mono">.yml</span>, <span class="mono">.yaml</span>, or a <span class="mono">.zip</span> of them. The files win: a task whose id already exists is overwritten.</div>
+</div>
+
+{% if errors %}
+<div class="callout stop" role="alert">
+  <b>Nothing was imported.</b> Fix {{ errors|length }} problem{{ errors|length|pluralize }} and upload again.
+  <ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if result %}
+<div class="panel">
+  <h3 class="flush-h">Imported</h3>
+  <p>{{ summary.created }} created, {{ summary.updated }} updated, {{ summary.unchanged }} unchanged.</p>
+  <a class="btn" href="{% url 'library-list' %}">Back to the library</a>
+</div>
+{% elif plan %}
+<div class="panel">
+  <h3 class="flush-h">Preview: {{ summary.created }} created, {{ summary.updated }} updated, {{ summary.unchanged }} unchanged</h3>
+  <table>
+    <tr><th>Action</th><th>Id</th><th>File</th><th>Changes</th></tr>
+    {% for item in plan.items %}
+    <tr>
+      <td><span class="chip {% if item.action == 'created' %}go{% elif item.action == 'updated' %}conditional{% endif %}">{{ item.action }}</span></td>
+      <td class="mono">{{ item.entry.id }}</td>
+      <td class="muted">{{ item.entry.source }}</td>
+      <td>
+        {% for field, pair in item.changes.items %}
+          <div class="small"><b>{{ field }}</b>: <span class="muted">{{ pair.0|truncatechars:60 }}</span> &rarr; {{ pair.1|truncatechars:60 }}</div>
+        {% endfor %}
+        {% for warning in item.warnings %}<div class="small muted">&#9888; {{ warning }}</div>{% endfor %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  <form method="post" class="actions row-actions">{% csrf_token %}
+    <input type="hidden" name="step" value="confirm">
+    <input type="hidden" name="payload" value="{{ payload }}">
+    <button type="submit">Confirm import</button>
+    <a class="btn quiet" href="{% url 'library-import' %}">Start over</a>
+  </form>
+</div>
+{% else %}
+<form method="post" enctype="multipart/form-data" class="panel">{% csrf_token %}
+  <label for="files" style="display:block;margin-bottom:.3rem">YAML files or a zip</label>
+  <input type="file" id="files" name="files" multiple accept=".yml,.yaml,.zip" required>
+  <p class="muted small">Up to 1 MB and 500 files per upload. Nothing is written until you confirm the preview.</p>
+  <div class="actions row-actions"><button type="submit">Preview import</button></div>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,23 @@
+<div id="results" aria-live="polite">{% if filter_error %}<p role="alert">{{ filter_error }}</p>{% endif %}<p class="muted">{{ paginator.count }} results</p><div class="panel flush">
+  <table>
+    <tr><th>ID</th><th>Technique</th><th>Tactics</th><th>Platforms</th><th>Sigma</th></tr>
+    {% for technique in object_list %}
+    <tr>
+      <td><a class="mono" href="{{ technique.get_absolute_url }}">{{ technique.attack_id }}</a></td>
+      <td>{{ technique.name }}{% if technique.deprecated %} <span class="chip no_go">Deprecated</span>{% endif %}</td>
+      <td class="muted">{{ technique.tactics|join:", " }}</td>
+      <td class="muted">{{ technique.platforms|join:", " }}</td>
+      <td class="num">{{ technique.sigma_count }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">
+      <div class="empty">
+        <p>Nothing matches. Clear the filters, or import the knowledge base if this is a fresh install.</p>
+        <code>manage.py import_attack</code>
+      </div>
+    </td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% include 'hunts/partials/_pager.html' %}</div>

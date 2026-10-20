@@ -1,0 +1,41 @@
+    {% if suggested_tasks %}
+    <div class="panel">
+      <h3 style="margin-top:0">Suggested from this hunt's techniques</h3>
+      <form method="post" action="{% url 'attach-suggested-tasks' hunt.pk %}">
+        {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <table>
+          <tr><th></th><th>Task</th><th>Techniques</th><th>Tool</th></tr>
+          {% for entry in suggested_tasks %}
+          <tr>
+            <td><input type="checkbox" name="library_pks" value="{{ entry.pk }}" aria-label="Attach {{ entry.library_id }}"></td>
+            <td><a href="{{ entry.get_absolute_url }}" class="mono">{{ entry.library_id }}</a> {{ entry.title }}</td>
+            <td>{% for t in entry.techniques.all %}<span class="chip id">{{ t.attack_id }}</span> {% endfor %}</td>
+            <td>{{ entry.hunting_tool|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% if perms.hunts.add_task %}
+        <div class="actions" style="margin:.7rem 0 0">
+          <select name="objective" id="suggested-objective" required aria-label="Objective to attach into">
+            {% for objective in objectives %}<option value="{{ objective.pk }}">{{ objective.objective_id }} {{ objective.title }}</option>{% endfor %}
+            <option value="new">+ New objective</option>
+          </select>
+          <input type="text" name="objective_title" id="suggested-objective-title" placeholder="New objective title" maxlength="300" hidden>
+          <button type="submit">Attach selected</button>
+        </div>
+        {% endif %}
+      </form>
+      {% if suggested_tasks_total > suggested_tasks|length %}<p style="margin:.7rem 0 0;font-size:var(--t-sm)"><a href="{% url 'hunt-suggested-tasks' hunt.pk %}" target="_blank" rel="noopener">See all {{ suggested_tasks_total }} suggested tasks</a></p>{% endif %}
+    </div>
+    <script>
+    (function () {
+      var select = document.getElementById("suggested-objective");
+      var title = document.getElementById("suggested-objective-title");
+      if (!select || !title) return;
+      var sync = function () { title.hidden = select.value !== "new"; };
+      select.addEventListener("change", sync);
+      sync();
+    })();
+    </script>
+    {% endif %}

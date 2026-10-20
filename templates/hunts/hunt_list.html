@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Hunts - HuntOps{% endblock %}
+{% block content %}
+<div class="page-head head-row">
+  <div>
+    <h1>Hunts</h1>
+    <div class="sub">Every hunt in the programme, from trigger to closed outcome.</div>
+  </div>
+  <div class="head-actions">
+    <nav class="view-toggle" aria-label="Hunt view">
+      <a href="{% url 'hunt-list' %}" aria-current="page">List</a>
+      <a href="{% url 'hunt-board' %}">Board</a>
+    </nav>
+    {% if perms.hunts.add_hunt %}<a class="btn" href="{% url 'hunt-create' %}">Start a hunt</a>{% endif %}
+  </div>
+</div>
+
+<nav class="stage-tabs" aria-label="Stage">
+  {% for value, label, count in tabs %}
+  <a href="{% if value %}{% querystring status=value page=None %}{% else %}{% querystring status=None page=None %}{% endif %}"{% if value == current %} aria-current="page"{% endif %}>{{ label }} <span class="count">{{ count }}</span></a>
+  {% endfor %}
+</nav>
+
+<form method="get" class="toolbar">
+  {% if current %}<input type="hidden" name="status" value="{{ current }}">{% endif %}
+  <div class="grow">
+    <label for="q">Search</label>
+    <input type="search" id="q" name="q" value="{{ q }}" placeholder="Title or HUNT-003">
+  </div>
+  <div>
+    <label for="owner">Owner</label>
+    <select name="owner" id="owner">
+      <option value="">Anyone</option>
+      {% for user in owners %}<option value="{{ user.pk }}"{% if user.pk|stringformat:"d" == owner %} selected{% endif %}>{{ user }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="priority">Priority</label>
+    <select name="priority" id="priority">
+      <option value="">Any</option>
+      {% for value, label in priorities %}<option value="{{ value }}"{% if value == priority %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div><button class="quiet" type="submit">Filter</button></div>
+  {% if q or owner or priority %}<div><a class="quiet" href="{% querystring q=None owner=None priority=None page=None %}">Clear</a></div>{% endif %}
+</form>
+
+<div class="panel flush">
+  <div class="rows">
+    {% if object_list %}
+    <div class="hunt-row hunt-head" aria-hidden="true">
+      <span>Hunt</span><span>Stage</span><span>Priority</span><span>Owner</span><span>Tasks</span>
+    </div>
+    {% endif %}
+    {% for hunt in object_list %}
+    <a class="row striped hunt-row {% if hunt.gate_blocked %}blocked{% else %}{{ hunt.feasibility_decision|lower }}{% endif %}" href="{{ hunt.get_absolute_url }}">
+      <div>
+        <div class="title"><span class="mono">{{ hunt.hunt_id }}</span> &nbsp;{{ hunt.title }}</div>
+        <div class="meta">
+          {% if hunt.gate_blocked %}<span class="chip blocked">Blocked at the feasibility gate</span>{% endif %}
+          {% if hunt.hunt_type %}<span>{{ hunt.get_hunt_type_display }}</span>{% endif %}
+          {% for t in hunt.technique_chips %}<span class="chip id">{{ t.attack_id }}</span>{% endfor %}
+          {% if hunt.technique_more %}<span>+{{ hunt.technique_more }}</span>{% endif %}
+        </div>
+      </div>
+      <div><span class="chip {{ hunt.status }}">{{ hunt.get_status_display }}</span></div>
+      <div>{% if hunt.priority %}<span class="chip {{ hunt.priority }}">{{ hunt.get_priority_display }}</span>{% else %}<span class="muted">&mdash;</span>{% endif %}</div>
+      <div class="small">{{ hunt.owner|default:"Unassigned" }}</div>
+      <div class="small">
+        {% if hunt.task_total %}<progress value="{{ hunt.task_done }}" max="{{ hunt.task_total }}"></progress> {{ hunt.task_done }}/{{ hunt.task_total }}{% else %}<span class="muted">No tasks</span>{% endif %}
+      </div>
+    </a>
+    {% empty %}
+    <div class="empty">
+      {% if q or owner or priority or current %}
+      <p>No hunts match these filters.</p>
+      {% else %}
+      <p>No hunts yet. A hunt starts from a trigger &mdash; an advisory, an incident, a gap you noticed.</p>
+      {% if perms.hunts.add_hunt %}<a class="btn" href="{% url 'hunt-create' %}">Start the first hunt</a>{% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% if is_paginated %}
+<div class="pager">
+  {% if page_obj.has_previous %}<a href="{% querystring page=page_obj.previous_page_number %}">Previous</a>{% endif %}
+  <span>Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a href="{% querystring page=page_obj.next_page_number %}">Next</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

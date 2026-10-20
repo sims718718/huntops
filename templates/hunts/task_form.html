@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{% if form.instance.pk %}Edit task{% else %}Write a task{% endif %} - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs">
+  <a href="{% url 'hunt-list' %}">Hunts</a><i>/</i>
+  {% if form.instance.pk %}<a href="{{ form.instance.get_absolute_url }}">{{ form.instance.task_id }}</a><i>/</i>Edit{% else %}New task{% endif %}
+</div>
+
+<div class="page-head">
+  <h1>{% if form.instance.pk %}Edit {{ form.instance.task_id }}{% else %}Write a task{% endif %}</h1>
+  <div class="sub">One query, one tool, one expected finding. Setting techniques attaches the vetted Sigma rules for them automatically.</div>
+</div>
+
+<div class="panel" style="max-width:52rem">
+  <form method="post" class="stack">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="actions" style="margin:0"><button type="submit">Save task</button></div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}{% include "hunts/_codemirror.html" %}{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Add evidence - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs">
+  <a href="{% url 'hunt-list' %}">Hunts</a><i>/</i>
+  {% if task %}<a href="{{ task.get_absolute_url }}">{{ task.task_id }}</a>
+  {% elif hunt %}<a href="{{ hunt.get_absolute_url }}">{{ hunt.hunt_id }}</a>
+  {% else %}<a href="{% url 'outcome-update' outcome.pk %}">{{ outcome }}</a>
+  {% endif %}<i>/</i>
+  New evidence
+</div>
+
+<div class="page-head">
+  <h1>Add evidence</h1>
+  <div class="sub">
+    {% if task %}{{ task.task_id }} {{ task.title }}
+    {% elif hunt %}{{ hunt.hunt_id }} {{ hunt.title }}
+    {% else %}{{ outcome }}
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel" style="max-width:52rem">
+  <form method="post" enctype="multipart/form-data" class="stack">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="actions" style="margin:0"><button type="submit">Save evidence</button></div>
+  </form>
+</div>
+{% endblock %}

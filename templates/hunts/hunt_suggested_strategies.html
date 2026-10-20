@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Suggested detection strategies for {{ hunt.hunt_id }} - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'hunt-list' %}">Hunts</a><i>/</i><a href="{{ hunt.get_absolute_url }}">{{ hunt.hunt_id }}</a><i>/</i>Detection strategies</div>
+
+<div class="page-head">
+  <h1>Suggested detection strategies for {{ hunt.hunt_id }}</h1>
+  <div class="sub">MITRE detection strategies for the techniques on this hunt and its tasks. Everything here is stored locally, so it works offline.</div>
+</div>
+
+<div class="panel" style="max-width:60rem">
+  {% include "hunts/partials/_strategy_rows.html" with full=True %}
+  {% if not suggested_strategies %}<p class="muted" style="margin:0">None for this hunt's techniques.</p>{% endif %}
+</div>
+{% endblock %}

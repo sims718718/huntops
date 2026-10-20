@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Suggested tasks for {{ hunt.hunt_id }} - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs"><a href="{% url 'hunt-list' %}">Hunts</a><i>/</i><a href="{{ hunt.get_absolute_url }}">{{ hunt.hunt_id }}</a><i>/</i>Suggested tasks</div>
+
+<div class="page-head">
+  <h1>Suggested tasks for {{ hunt.hunt_id }}</h1>
+  <div class="sub">Every library task that shares a technique with this hunt and has not been attached to it yet.</div>
+</div>
+
+<div style="max-width:60rem">
+{% include "hunts/partials/_suggested_tasks.html" %}
+{% if not suggested_tasks %}<div class="panel"><p class="muted" style="margin:0">Nothing left to suggest.</p></div>{% endif %}
+</div>
+{% endblock %}

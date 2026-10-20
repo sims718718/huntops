@@ -1,0 +1,14 @@
+{% load attack %}
+      {% for strategy in suggested_strategies %}
+        <p style="margin:0 0 .3rem;font-size:var(--t-sm)">
+          {{ strategy.name }}
+          <a class="chip id" href="{{ strategy.technique.get_absolute_url }}">{{ strategy.technique.attack_id }}</a>
+          {% for analytic in strategy.analytics.all %}
+            <br><span class="muted" style="font-size:var(--t-xs)">{{ analytic.name }}</span>
+            {% if full %}
+              {% for channel in analytic.log_sources %}<span class="chip id">{{ channel }}</span> {% endfor %}
+              <span class="prose" style="display:block;margin:.2rem 0 .6rem;font-size:var(--t-sm)">{{ analytic.description|attack_prose }}</span>
+            {% endif %}
+          {% endfor %}
+        </p>
+      {% endfor %}

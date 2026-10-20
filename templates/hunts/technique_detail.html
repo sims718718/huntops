@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% load attack %}
+{% block title %}{{ technique.attack_id }} {{ technique.name }} - HuntOps{% endblock %}
+{% block content %}
+<div class="crumbs">
+  <a href="{% url 'technique-list' %}">ATT&amp;CK</a><i>/</i>
+  {% if technique.parent %}<a href="{{ technique.parent.get_absolute_url }}">{{ technique.parent.attack_id }}</a><i>/</i>{% endif %}
+  {{ technique.attack_id }}
+</div>
+
+<div class="page-head">
+  <h1>{{ technique.name }}</h1>
+  <div class="sub">
+    <span class="id">{{ technique.attack_id }}</span>
+    {% for t in tactics %}<a href="{% url 'technique-list' %}?tactic={{ t.shortname }}">{{ t.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+    {% if technique.parent %}&nbsp;&mdash; sub-technique of <a href="{{ technique.parent.get_absolute_url }}">{{ technique.parent.name }}</a>{% endif %}
+  </div>
+</div>
+
+{% if technique.deprecated %}
+<div class="callout">
+  <b>Deprecated in the current import.</b>
+  {% if technique.revoked_by %}Replaced by <a href="{{ technique.revoked_by.get_absolute_url }}">{{ technique.revoked_by.attack_id }} {{ technique.revoked_by.name }}</a>.{% endif %}
+  Hunts referencing it keep the ATT&amp;CK version they were created against.
+</div>
+{% endif %}
+
+<div class="cols">
+  <div>
+    <div class="panel"><p class="prose" style="margin:0">{{ technique.description|attack_prose|default:"No description imported." }}</p></div>
+
+    <h2>Detection</h2>
+    <div class="panel">
+      {% if technique.detection %}<p class="prose">{{ technique.detection|attack_prose }}</p>{% endif %}
+      {% for strategy in strategies %}
+        <details>
+          <summary>{{ strategy.name }}</summary>
+          {% for analytic in strategy.analytics.all %}
+            <p style="margin:.3rem 0 .7rem">
+              <b style="font-size:var(--t-sm)">{{ analytic.name }}</b>
+              {% for channel in analytic.log_sources %}<span class="chip id">{{ channel }}</span> {% endfor %}
+              <br><span class="prose" style="font-size:var(--t-sm)">{{ analytic.description|attack_prose }}</span>
+            </p>
+          {% endfor %}
+        </details>
+      {% empty %}
+        {% if not technique.detection %}<p class="muted" style="margin:0">No detection guidance in this ATT&amp;CK version.</p>{% endif %}
+      {% endfor %}
+    </div>
+
+    <h2>Procedure examples</h2>
+    <div class="panel">
+      <p class="muted" style="font-size:var(--t-sm);margin:0 0 .5rem">
+        What this looks like when someone actually does it. {{ procedures|length }} recorded &mdash; reference only, HuntOps never runs anything.
+      </p>
+      <details>
+        <summary>Show examples</summary>
+        {% for procedure in procedures %}
+          <p style="margin:.4rem 0"><b class="mono" style="font-size:var(--t-sm)">{{ procedure.source.attack_id }}</b> {{ procedure.source.name }}
+            <br><span class="prose" style="font-size:var(--t-sm)">{{ procedure.description|attack_prose }}</span></p>
+        {% empty %}<p class="muted">None recorded.</p>{% endfor %}
+      </details>
+    </div>
+
+    <h2>Mitigations</h2>
+    <div class="panel">
+      {% for link in mitigations %}
+        <details>
+          <summary>{{ link.mitigation.attack_id }} {{ link.mitigation.name }}</summary>
+          <p class="prose" style="font-size:var(--t-sm)">{{ link.description|default:link.mitigation.description|attack_prose }}</p>
+        </details>
+      {% empty %}<p class="muted" style="margin:0">None listed.</p>{% endfor %}
+    </div>
+
+    <h2>Sigma rules</h2>
+    <div class="panel">
+      <p class="muted" style="font-size:var(--t-sm);margin:0 0 .5rem">
+        {{ sigma_count }} rule{{ sigma_count|pluralize }} map to this technique.{% if sigma_count > 50 %} Showing the first 50.{% endif %}
+      </p>
+      <div class="chips">
+        {% for rule in sigma_rules|slice:":24" %}
+          <span class="chip {{ rule.status|slugify }}"
+                title="{{ rule.status|default:"unknown status" }} — {{ rule.logsource_product }} — {{ rule.author|default:"Unknown author" }} — {{ rule.license }}">
+            <span class="label">{{ rule.title }}</span>
+          </span>
+        {% empty %}<span class="muted" style="font-size:var(--t-sm)">None.</span>{% endfor %}
+        {% if sigma_count > 24 %}<span class="chip more">{{ sigma_count }} in all</span>{% endif %}
+      </div>
+      {% if sigma_rules %}
+      <details>
+        <summary>Show details</summary>
+        {% for rule in sigma_rules %}
+          <p style="margin:.3rem 0;font-size:var(--t-sm)">{{ rule.title }} <span class="chip">{{ rule.status|default:"unknown" }}</span>
+            <br><span class="muted" style="font-size:var(--t-xs)">{{ rule.logsource_product }} &mdash; {{ rule.author|default:"Unknown author" }} &mdash; {{ rule.license }}</span></p>
+        {% endfor %}
+      </details>
+      {% endif %}
+    </div>
+  </div>
+
+  <aside class="rail">
+    <div class="panel">
+      <h3 style="margin-top:0">Your coverage</h3>
+      {% if hunts %}
+        {% for hunt in hunts %}
+        <p style="margin:0 0 .3rem;font-size:var(--t-sm)"><a class="mono" href="{{ hunt.get_absolute_url }}">{{ hunt.hunt_id }}</a> {{ hunt.title }}</p>
+        {% endfor %}
+      {% else %}
+        <p class="muted" style="font-size:var(--t-sm);margin:0">Never hunted.</p>
+      {% endif %}
+      {% if subtechnique_coverage.1 %}
+      <p style="font-size:var(--t-sm);margin:.5rem 0 0">{{ subtechnique_coverage.0 }} of {{ subtechnique_coverage.1 }} sub-techniques hunted</p>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <h3 style="margin-top:0">Cited in intel</h3>
+      {% for report in intel %}
+        <p style="margin:0 0 .3rem;font-size:var(--t-sm)"><a class="mono" href="{{ report.get_absolute_url }}">{{ report.intel_id }}</a> {{ report.title }}</p>
+      {% empty %}
+        <p class="muted" style="font-size:var(--t-sm);margin:0">No imported intel cites this technique.</p>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      <h3 style="margin-top:0">Ready-made tasks</h3>
+      {% for entry in library %}
+        <p style="margin:0 0 .3rem;font-size:var(--t-sm)"><a class="mono" href="{{ entry.get_absolute_url }}">{{ entry.library_id }}</a> {{ entry.title }}</p>
+      {% empty %}
+        <p class="muted" style="font-size:var(--t-sm);margin:0">Nothing in the library for this technique yet.</p>
+      {% endfor %}
+    </div>
+
+    <div class="panel">
+      <h3 style="margin-top:0">Reference</h3>
+      <table class="keyed">
+        <tr><th>Platforms</th><td>{{ technique.platforms|join:", "|default:"—" }}</td></tr>
+        <tr><th>Data sources</th><td>{{ technique.data_sources|join:", "|default:"—" }}</td></tr>
+        <tr><th>Version</th><td>{{ technique.technique_version|default:"—" }}</td></tr>
+        <tr><th>Modified</th><td>{{ technique.modified|date:"Y-m-d"|default:"—" }}</td></tr>
+        {% if technique.url %}<tr><th>MITRE</th><td><a href="{{ technique.url }}">attack.mitre.org</a></td></tr>{% endif %}
+      </table>
+    </div>
+
+    {% if technique.subtechniques.exists %}
+    <div class="panel">
+      <h3 style="margin-top:0">Sub-techniques</h3>
+      {% for sub in technique.subtechniques.all %}
+        <p style="margin:0 0 .25rem;font-size:var(--t-sm)"><a class="mono" href="{{ sub.get_absolute_url }}">{{ sub.attack_id }}</a> {{ sub.name }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

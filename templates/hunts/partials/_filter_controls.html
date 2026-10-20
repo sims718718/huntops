@@ -1,0 +1,3 @@
+<div class="grow"><label for="q">Search</label><input type="search" name="q" id="q" value="{{ q }}" placeholder="Search names, IDs or content" autocomplete="off"></div>
+{% for facet in facet_controls %}<div><label for="facet-{{ facet.param }}">{{ facet.label }}</label><select name="{{ facet.param }}" id="facet-{{ facet.param }}"><option value="">All</option>{% for value,label in facet.choices %}<option value="{{ value }}" {% if value|stringformat:"s" == facet.selected %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>{% endfor %}
+<div><button class="quiet" type="submit">Search</button></div><div><a class="btn quiet" href="{{ clear_url|default:request.path }}">Clear</a></div>
