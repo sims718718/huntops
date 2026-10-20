@@ -378,6 +378,30 @@ A few conventions worth knowing before you change things:
 - A UTHP hypothesis-scoring gate was built and then removed because it cluttered hunt creation;
   please ask before reintroducing it.
 
+## Screenshots
+
+### Intial Dashboard
+<img width="1275" height="532" alt="Screenshot 2026-10-20 143800" src="https://github.com/user-attachments/assets/a6cc74b6-0d6c-46be-a01f-65a232ada621" />
+
+### Kanban Board
+<img width="1242" height="849" alt="Screenshot 2026-10-20 143833" src="https://github.com/user-attachments/assets/a1bdbcb0-2f40-48a0-a70b-1843feb829b7" />
+
+### Hunt List
+<img width="1410" height="436" alt="Screenshot 2026-10-20 143906" src="https://github.com/user-attachments/assets/db044791-cc48-40ad-a530-1dfd148fdb7e" />
+
+### Example Hunt
+<img width="1343" height="1121" alt="Screenshot 2026-10-20 143929" src="https://github.com/user-attachments/assets/11acc205-d2b8-4a5a-bfd6-73e8fd38959c" />
+
+### Task Library
+<img width="1210" height="1032" alt="Screenshot 2026-10-20 143949" src="https://github.com/user-attachments/assets/dede8e8e-7c73-4d54-a9ab-6fa0a764502b" />
+
+### MITRE TTP Coverage Map
+<img width="2202" height="1095" alt="Screenshot 2026-10-20 144007" src="https://github.com/user-attachments/assets/144cc5e8-c245-444e-82ba-b0a98dcf1e43" />
+
+### Metrics
+<img width="2333" height="674" alt="Screenshot 2026-10-20 144024" src="https://github.com/user-attachments/assets/6833fd67-989e-4087-8918-3658016e7680" />
+
+
 ## Credits and licences
 
 HuntOps is released under the [MIT License](LICENSE). Third-party content keeps its own terms:
